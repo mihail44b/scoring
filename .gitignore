@@ -28,6 +28,7 @@ share/python-wheels/
 *.egg
 
 # Данные и результаты (не коммитим клиентские Excel файлы!)
+*.xlsx
 *.xls
 *.csv
 !reference_data/ 
