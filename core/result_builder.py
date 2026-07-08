@@ -19,7 +19,7 @@ SCORE_COLUMNS = [
 DIAG_COLUMNS = [
     "A_completeness", "A_stop_factor",
     "B_completeness", "B_stop_factor",
-    "C_completeness", "C_stop_factor",
+    "C_completeness", "C_stop_factor", "C_status",
     "D_completeness", "D_stop_factor",
     "E_completeness", "E_stop_factor",
 ]
@@ -35,6 +35,7 @@ RENAME_MAP = {
     "C_score": "Балл (C) Отрасль",
     "C_completeness": "Полнота данных (C) %",
     "C_stop_factor": "Стоп-фактор (C)",
+    "C_status": "Статус (C)",
     "D_score": "Балл (D) Контакты",
     "D_completeness": "Полнота данных (D) %",
     "D_stop_factor": "Стоп-фактор (D)",
