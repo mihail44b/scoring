@@ -22,9 +22,9 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         df с добавленными колонками всех категорий
     """
-    df = score_category_a(df)
+    df = score_category_c(df)  # Сначала считаем отраслевую релевантность (C)
+    df = score_category_a(df)  # Затем финансы (A), чтобы видеть C_score
     df = score_category_b(df)
-    df = score_category_c(df)
     df = score_category_d(df)
     df = score_category_e(df)
     return df

@@ -17,11 +17,12 @@ SCORE_COLUMNS = [
 
 # Доп. диагностические колонки
 DIAG_COLUMNS = [
-    "A_completeness", "A_stop_factor",
+    "A_completeness", "A_stop_factor", "A_no_revenue_data", "A_region_coeff",
     "B_completeness", "B_stop_factor",
     "C_completeness", "C_stop_factor", "C_status",
     "D_completeness", "D_stop_factor",
     "E_completeness", "E_stop_factor",
+    "scoring_weights_mode",
 ]
 
 # Перевод колонок на русский язык для итогового файла
@@ -29,6 +30,8 @@ RENAME_MAP = {
     "A_score": "Балл (A) Фин. здоровье",
     "A_completeness": "Полнота данных (A) %",
     "A_stop_factor": "Стоп-фактор (A)",
+    "A_no_revenue_data": "Нет данных о выручке (A)",
+    "A_region_coeff": "Региональный коэф. (A)",
     "B_score": "Балл (B) Масштаб",
     "B_completeness": "Полнота данных (B) %",
     "B_stop_factor": "Стоп-фактор (B)",
@@ -44,6 +47,7 @@ RENAME_MAP = {
     "E_stop_factor": "Стоп-фактор (E)",
     "scoring_total": "Итоговый скоринг",
     "scoring_segment": "Сегмент",
+    "scoring_weights_mode": "Режим весов",
 }
 
 
