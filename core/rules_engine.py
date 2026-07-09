@@ -56,7 +56,7 @@ def apply_rules(df: pd.DataFrame) -> pd.DataFrame:
         df: DataFrame с колонками A_score..E_score
 
     Returns:
-        df с колонками: scoring_total, scoring_segment, scoring_weights_mode
+        df с колонками: scoring_total, scoring_segment
     """
     result = df.copy()
     weights = _load_weights()
@@ -81,9 +81,6 @@ def apply_rules(df: pd.DataFrame) -> pd.DataFrame:
 
     total = np.where(any_zero, 0, np.round(weighted, 2))
     result["scoring_total"] = total
-
-    # ─── Режим расчёта (для диагностики) ─────────────────────────────
-    result["scoring_weights_mode"] = "стандартный"
 
     # ─── Сегментация ─────────────────────────────────────────────────
     def assign_segment(score):

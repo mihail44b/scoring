@@ -202,9 +202,6 @@ async def score_full(file: UploadFile = File(...)):
 
     chuvasia_mask = df_scored["A_region_coeff"] > 1.0
     chuvasia_count = int(chuvasia_mask.sum())
-    
-    redistributed_mask = df_scored["scoring_weights_mode"] == "перераспределение (без A)"
-    redistributed_count = int(redistributed_mask.sum())
 
     # Средние баллы
     avg_score = round(float(df_scored["scoring_total"].mean()), 2) if total > 0 else 0
@@ -223,7 +220,6 @@ async def score_full(file: UploadFile = File(...)):
         "total": total,
         "segments": segment_counts,
         "chuvasia_count": chuvasia_count,
-        "redistributed_count": redistributed_count,
         "averages": {
             "total": avg_score,
             "A": avg_a,

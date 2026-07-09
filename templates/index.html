@@ -755,7 +755,7 @@
     <header>
         <div class="logo-section">
             <div class="logo-icon">C</div>
-            <div class="logo-title">Скоринг ДП • Metabase</div>
+            <div class="logo-title">Скоринг ДП</div>
         </div>
         <div class="header-actions">
             <span id="file-name-display" style="font-size: 14px; font-weight: 500; display: none;"></span>
@@ -814,11 +814,7 @@
                     <div class="kpi-value" id="kpi-avg">0.0</div>
                     <div class="kpi-subtitle">Общий уровень лидов по базе</div>
                 </div>
-                <div class="kpi-card" style="border-left: 4px solid var(--accent);">
-                    <div class="kpi-title">Адаптивный вес</div>
-                    <div class="kpi-value" id="kpi-redist">0</div>
-                    <div class="kpi-subtitle">Без фин. данных (веса адаптированы)</div>
-                </div>
+
             </div>
 
             <!-- ANALYTICS CHARTS -->
@@ -878,11 +874,7 @@
                             <option value="Тёплый">Тёплые</option>
                             <option value="Холодный">Холодные</option>
                         </select>
-                        <select id="weightsFilter" class="filter-select" onchange="applyFilters()">
-                            <option value="">Все режимы весов</option>
-                            <option value="перераспределение (без A)">Без финансов (перераспределён)</option>
-                            <option value="стандартный">Стандартный расчет</option>
-                        </select>
+
                         <select id="regionFilter" class="filter-select" onchange="applyFilters()">
                             <option value="">Все регионы</option>
                             <option value="chuvash">Чувашская Республика</option>
@@ -905,7 +897,7 @@
                                 <th>C_score (Отрасль)</th>
                                 <th>Итоговый скоринг</th>
                                 <th>Сегмент</th>
-                                <th>Режим весов</th>
+
                                 <th>Регион</th>
                             </tr>
                         </thead>
@@ -1004,10 +996,7 @@
                     <span class="diag-label">Региональный Идентификатор:</span>
                     <span class="diag-value" id="modal-region-coeff">Обычный (1.0x порогов)</span>
                 </div>
-                <div class="diag-item">
-                    <span class="diag-label">Метод расчета весов:</span>
-                    <span class="diag-value text-accent" id="modal-redist-info">Веса стандартные</span>
-                </div>
+
                 <div class="diag-item">
                     <span class="diag-label">Финансовые данные в базе:</span>
                     <span class="diag-value" id="modal-fin-exists">Есть</span>
@@ -1121,7 +1110,7 @@
             document.getElementById('kpi-hot').innerText = stats.segments.Горячий || 0;
             document.getElementById('kpi-warm-cold').innerText = `${stats.segments.Тёплый || 0} / ${stats.segments.Холодный || 0}`;
             document.getElementById('kpi-avg').innerText = stats.averages.total.toFixed(1);
-            document.getElementById('kpi-redist').innerText = stats.redistributed_count;
+
             document.getElementById('kpi-chuvash').innerText = stats.chuvasia_count;
 
             const totalStops = stats.stops.revenue_stop + stats.stops.industry_stop;
@@ -1248,9 +1237,7 @@
                 const isChuvash = rec.A_region_coeff > 1.0;
                 const chuvashBadge = isChuvash ? `<span class="tag badge chuvash" style="font-size:10px;">Чувашия х3</span>` : '';
 
-                // Weight redistribution badge
-                const redistMode = rec.scoring_weights_mode === 'перераспределение (без A)';
-                const weightBadge = redistMode ? `<span class="tag badge redist" style="font-size:10px;">Адаптив</span>` : '';
+
 
                 // Formatted Revenue
                 const revNum = parseFloat(rec.ui_revenue);
@@ -1272,7 +1259,7 @@
                     <td>${rec.C_score !== null ? rec.C_score : '-'}</td>
                     <td style="font-weight:700; color:var(--primary-light);">${rec.scoring_total}</td>
                     <td><span class="tag ${segClass}">${rec.scoring_segment}</span></td>
-                    <td>${weightBadge || '<span style="color:var(--text-secondary); font-size:11px;">стандартный</span>'}</td>
+
                     <td>${chuvashBadge || '<span style="color:var(--text-secondary); font-size:11px;">РФ</span>'}</td>
                 `;
                 tbody.appendChild(tr);
@@ -1284,7 +1271,7 @@
 
             const searchQuery = document.getElementById('searchInput').value.toLowerCase().trim();
             const segmentFilter = document.getElementById('segmentFilter').value;
-            const weightsFilter = document.getElementById('weightsFilter').value;
+
             const regionFilter = document.getElementById('regionFilter').value;
 
             const filtered = dashboardData.records.filter(rec => {
@@ -1296,8 +1283,7 @@
                 // Segment filter
                 if (segmentFilter && rec.scoring_segment !== segmentFilter) return false;
 
-                // Weighing mode filter
-                if (weightsFilter && rec.scoring_weights_mode !== weightsFilter) return false;
+
 
                 // Region filter
                 if (regionFilter) {
@@ -1349,10 +1335,7 @@
                 ? `<span style="color:#4f46e5; font-weight:700;">Чувашская Республика (х3.0 пониженный финансовый порог)</span>`
                 : 'Обычный регион (Москва)';
 
-            const isRedist = rec.scoring_weights_mode === 'перераспределение (без A)';
-            document.getElementById('modal-redist-info').innerHTML = isRedist
-                ? `<span style="color:#7c3aed; font-weight:700;">Адаптивный (вес категории А перераспределен на B, C, D, E)</span>`
-                : 'Стандартный (Категория A внесена в итоговый скоринг)';
+
 
             // Financial missing explanation
             const hasFin = !rec.A_no_revenue_data;

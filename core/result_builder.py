@@ -22,7 +22,6 @@ DIAG_COLUMNS = [
     "C_completeness", "C_stop_factor", "C_status",
     "D_completeness", "D_stop_factor",
     "E_completeness", "E_stop_factor",
-    "scoring_weights_mode",
 ]
 
 # Перевод колонок на русский язык для итогового файла
@@ -46,7 +45,6 @@ RENAME_MAP = {
     "E_stop_factor": "Стоп-фактор (E)",
     "scoring_total": "Итоговый скоринг",
     "scoring_segment": "Сегмент",
-    "scoring_weights_mode": "Режим весов",
 }
 
 
