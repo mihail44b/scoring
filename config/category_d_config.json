@@ -1,0 +1,10 @@
+{
+  "column_map": {
+    "phone": "Телефоны",
+    "email": "Email",
+    "website": "Web-сайты",
+    "address": "Адрес",
+    "manager": "Руководитель",
+    "position": "Должность"
+  }
+}

@@ -9,31 +9,23 @@
 """
 from __future__ import annotations
 
+import os
+import json
 import pandas as pd
 import numpy as np
 
-# ─── Веса категории D (из формулы P2 в Excel) ───────────────────────────
-D_WEIGHTS = {
-    "phone":    0.25,
-    "email":    0.25,
-    "website":  0.20,
-    "address":  0.15,
-    "manager":  0.10,
-    "position": 0.05,
-}
+_CONF_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config")
 
-# ─── Явное сопоставление логических полей с колонками входного файла ────
-# Явный маппинг вместо поиска по подстроке: надёжнее, не зависит от
-# порядка колонок и не может случайно "перехватить" похожую колонку
-# (например "Email" внутри "Доп. Email").
-COLUMN_MAP = {
-    "phone":    "Телефоны",
-    "email":    "Email",
-    "website":  "Web-сайты",
-    "address":  "Адрес",
-    "manager":  "Руководитель",
-    "position": "Должность",
-}
+def _load_config():
+    path = os.path.join(_CONF_DIR, "category_d_config.json")
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def _load_weights():
+    path = os.path.join(_CONF_DIR, "weights.json")
+    with open(path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+        return config["categories"]["D_contact_availability"]["features"]
 
 
 def _get_series(df: pd.DataFrame, column_name: str) -> pd.Series | None:
@@ -60,6 +52,12 @@ def _is_present(series: pd.Series | None, n_rows: int) -> np.ndarray:
 def score_category_d(df: pd.DataFrame) -> pd.DataFrame:
     result = df.copy()
     n_rows = len(result)
+
+    # Загрузка конфигов
+    config = _load_config()
+    weights = _load_weights()
+    COLUMN_MAP = config["column_map"]
+    D_WEIGHTS = weights
 
     s_phone = _is_present(_get_series(result, COLUMN_MAP["phone"]), n_rows)
     s_email = _is_present(_get_series(result, COLUMN_MAP["email"]), n_rows)
