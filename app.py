@@ -77,7 +77,7 @@ async def score_file(file: UploadFile = File(..., description="Excel-файл (.
     if not file.filename.endswith((".xlsx", ".xls")):
         raise HTTPException(
             status_code=400,
-            detail="Поддерживаются только файлы .xlsx"
+            detail="Поддерживаются только файлы .xlsx/.xls"
         )
 
     # Чтение файла
