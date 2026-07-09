@@ -44,6 +44,17 @@ def _load_segments() -> list[dict]:
     ]
 
 
+def _load_enrichment_weights() -> dict:
+    """Загружает веса для приоритета обогащения."""
+    config_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "config", "enrichment_weights.json"
+    )
+    if os.path.exists(config_path):
+        with open(config_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {"score_weight": 0.6, "entropy_weight": 0.4}
+
+
 def apply_rules(df: pd.DataFrame) -> pd.DataFrame:
     """
     Рассчитывает итоговый скоринг и сегмент.
@@ -56,7 +67,7 @@ def apply_rules(df: pd.DataFrame) -> pd.DataFrame:
         df: DataFrame с колонками A_score..E_score
 
     Returns:
-        df с колонками: scoring_total, scoring_segment
+        df с колонками: scoring_total, scoring_segment, scoring_entropy, enrichment_priority
     """
     result = df.copy()
     weights = _load_weights()
@@ -81,6 +92,28 @@ def apply_rules(df: pd.DataFrame) -> pd.DataFrame:
 
     total = np.where(any_zero, 0, np.round(weighted, 2))
     result["scoring_total"] = total
+
+    # ─── Расчет энтропии и приоритета обогащения ─────────────────────
+    enrich_weights = _load_enrichment_weights()
+    a_comp = result.get("A_completeness", pd.Series(0, index=result.index)).fillna(0)
+    b_comp = result.get("B_completeness", pd.Series(0, index=result.index)).fillna(0)
+    c_comp = result.get("C_completeness", pd.Series(0, index=result.index)).fillna(0)
+    d_comp = result.get("D_completeness", pd.Series(0, index=result.index)).fillna(0)
+    e_comp = result.get("E_completeness", pd.Series(0, index=result.index)).fillna(0)
+
+    overall_completeness = (
+        a_comp * weights["A"]
+        + b_comp * weights["B"]
+        + c_comp * weights["C"]
+        + d_comp * weights["D"]
+        + e_comp * weights["E"]
+    )
+    
+    entropy = 100.0 - overall_completeness
+    result["scoring_entropy"] = np.round(entropy, 1)
+
+    priority = total * enrich_weights["score_weight"] + entropy * enrich_weights["entropy_weight"]
+    result["enrichment_priority"] = np.where(any_zero, 0.0, np.round(priority, 2))
 
     # ─── Сегментация ─────────────────────────────────────────────────
     def assign_segment(score):
