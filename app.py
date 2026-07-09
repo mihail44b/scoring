@@ -15,6 +15,7 @@ app.py — точка входа FastAPI (участник 5).
 """
 import sys
 import os
+import numpy as np
 
 # Добавляем dp_scoring в sys.path для корректных импортов
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -76,7 +77,7 @@ async def score_file(file: UploadFile = File(..., description="Excel-файл (.
     if not file.filename.endswith((".xlsx", ".xls")):
         raise HTTPException(
             status_code=400,
-            detail="Поддерживаются только файлы .xlsx"
+            detail="Поддерживаются только файлы .xlsx/.xls"
         )
 
     # Чтение файла
@@ -124,6 +125,127 @@ async def score_file(file: UploadFile = File(..., description="Excel-файл (.
     )
 
 
+@app.post("/api/score/full")
+async def score_full(file: UploadFile = File(...)):
+    """
+    Полный расчет скоринга с возвращением JSON-данных для дашборда.
+    """
+    if not file.filename.endswith((".xlsx", ".xls")):
+        raise HTTPException(status_code=400, detail="Только .xlsx")
+
+    # Чтение
+    try:
+        content = await file.read()
+        df = pd.read_excel(io.BytesIO(content), sheet_name=0)
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ошибка чтения файла: {str(e)}"
+        )
+
+    # Валидация
+    validation = validate_input(df)
+    if not validation.is_valid:
+        return JSONResponse(
+            status_code=422,
+            content={
+                "detail": "Ошибка валидации входных данных",
+                "errors": validation.errors,
+                "warnings": validation.warnings,
+            }
+        )
+
+    # Расчет
+    try:
+        df_feat = build_features(df)
+        df_scored = apply_rules(df_feat)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Ошибка при расчете скоринга: {str(e)}"
+        )
+
+    # Подготовка данных для JSON (замена NaN, Inf -> None)
+    df_clean = df_scored.copy()
+    
+    # Ищем ключевые колонки
+    def find_col(prefixes):
+        for pref in prefixes:
+            col = next((c for c in df_clean.columns if pref.lower() in str(c).lower()), None)
+            if col:
+                return col
+        return None
+
+    address_col = find_col(["адрес", "регион", "местонахождение"])
+    industry_col = find_col(["оквэд", "отрасль"])
+    revenue_col = find_col(["выручка", "доход"])
+
+    # Приводим к общему виду для UI
+    df_clean["ui_inn"] = df_clean.get("ИНН", pd.Series("", index=df_clean.index)).astype(str).str.strip()
+    df_clean["ui_name"] = df_clean.get("Краткое наименование", df_clean.get("Название", pd.Series("Неизвестно", index=df_clean.index)))
+    df_clean["ui_address"] = df_clean[address_col] if address_col else "Не указан"
+    df_clean["ui_industry"] = df_clean[industry_col] if industry_col else "Не указана"
+    df_clean["ui_revenue"] = df_clean[revenue_col] if revenue_col else 0
+
+    # Замена NaN -> None для корректного JSON
+    df_clean = df_clean.replace({np.nan: None, pd.NA: None})
+    
+    records = df_clean.to_dict(orient="records")
+
+    # Считаем агрегированные метрики для дашборда
+    total = len(df_scored)
+    
+    segment_counts = df_scored["scoring_segment"].value_counts().to_dict()
+    for seg in ["Горячий", "Тёплый", "Холодный"]:
+        if seg not in segment_counts:
+            segment_counts[seg] = 0
+
+    chuvasia_mask = df_scored["A_region_coeff"] > 1.0
+    chuvasia_count = int(chuvasia_mask.sum())
+
+    # Средние баллы
+    avg_score = round(float(df_scored["scoring_total"].mean()), 2) if total > 0 else 0
+    avg_a = round(float(df_scored["A_score"].mean()), 2) if total > 0 else 0
+    avg_b = round(float(df_scored["B_score"].mean()), 2) if total > 0 else 0
+    avg_c = round(float(df_scored["C_score"].mean()), 2) if total > 0 else 0
+    avg_d = round(float(df_scored["D_score"].mean()), 2) if total > 0 else 0
+    avg_e = round(float(df_scored["E_score"].mean()), 2) if total > 0 else 0
+
+    # Самые частые нарушения/причины
+    # A_stop_factor == 0 — выручка ниже порога (для стандартного расчета)
+    a_stopped = int((df_scored["A_stop_factor"] == 0).sum())
+    c_stopped = int((df_scored["C_stop_factor"] == 0).sum())
+
+    stats = {
+        "total": total,
+        "segments": segment_counts,
+        "chuvasia_count": chuvasia_count,
+        "averages": {
+            "total": avg_score,
+            "A": avg_a,
+            "B": avg_b,
+            "C": avg_c,
+            "D": avg_d,
+            "E": avg_e,
+        },
+        "stops": {
+            "revenue_stop": a_stopped,
+            "industry_stop": c_stopped
+        }
+    }
+
+    return {
+        "validation": {
+            "is_valid": validation.is_valid,
+            "row_count": validation.row_count,
+            "warnings": validation.warnings,
+            "available_categories": validation.available_categories,
+        },
+        "stats": stats,
+        "records": records,
+    }
+
+
 @app.post("/score/preview")
 async def score_preview(file: UploadFile = File(...)):
     """
@@ -147,7 +269,9 @@ async def score_preview(file: UploadFile = File(...)):
         "scoring_total", "scoring_segment",
     ]
     existing = [c for c in preview_cols if c in df.columns]
-    preview = df[existing].head(10)
+    
+    df_clean = df[existing].replace({np.nan: None, pd.NA: None})
+    preview = df_clean.head(10).to_dict(orient="records")
 
     return {
         "validation": {
@@ -156,5 +280,6 @@ async def score_preview(file: UploadFile = File(...)):
             "warnings": validation.warnings,
             "available_categories": validation.available_categories,
         },
-        "preview": preview.to_dict(orient="records"),
+        "preview": preview,
     }
+

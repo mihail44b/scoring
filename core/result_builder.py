@@ -17,9 +17,9 @@ SCORE_COLUMNS = [
 
 # Доп. диагностические колонки
 DIAG_COLUMNS = [
-    "A_completeness", "A_stop_factor",
+    "A_completeness", "A_stop_factor", "A_region_coeff",
     "B_completeness", "B_stop_factor",
-    "C_completeness", "C_stop_factor",
+    "C_completeness", "C_stop_factor", "C_status",
     "D_completeness", "D_stop_factor",
     "E_completeness", "E_stop_factor",
 ]
@@ -29,12 +29,14 @@ RENAME_MAP = {
     "A_score": "Балл (A) Фин. здоровье",
     "A_completeness": "Полнота данных (A) %",
     "A_stop_factor": "Стоп-фактор (A)",
+    "A_region_coeff": "Региональный коэф. (A)",
     "B_score": "Балл (B) Масштаб",
     "B_completeness": "Полнота данных (B) %",
     "B_stop_factor": "Стоп-фактор (B)",
     "C_score": "Балл (C) Отрасль",
     "C_completeness": "Полнота данных (C) %",
     "C_stop_factor": "Стоп-фактор (C)",
+    "C_status": "Статус (C)",
     "D_score": "Балл (D) Контакты",
     "D_completeness": "Полнота данных (D) %",
     "D_stop_factor": "Стоп-фактор (D)",
@@ -58,8 +60,9 @@ def build_result(df: pd.DataFrame, include_source: bool = True) -> pd.DataFrame:
         DataFrame с упорядоченными колонками
     """
     if include_source:
-        # Все исходные + скоринг + диагностика
-        source_cols = [c for c in df.columns if c not in SCORE_COLUMNS + DIAG_COLUMNS]
+        # Все исходные + скоринг + диагностика (исключая технические флаги)
+        exclude_list = SCORE_COLUMNS + DIAG_COLUMNS + ["A_no_revenue_data"]
+        source_cols = [c for c in df.columns if c not in exclude_list]
         ordered = source_cols + SCORE_COLUMNS + DIAG_COLUMNS
     else:
         ordered = ID_COLUMNS + SCORE_COLUMNS
