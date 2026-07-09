@@ -266,7 +266,7 @@ async def score_preview(file: UploadFile = File(...)):
     preview_cols = [
         "ИНН", "Краткое наименование",
         "A_score", "B_score", "C_score", "D_score", "E_score",
-        "scoring_total", "scoring_segment",
+        "scoring_total", "enrichment_priority", "scoring_segment",
     ]
     existing = [c for c in preview_cols if c in df.columns]
     
