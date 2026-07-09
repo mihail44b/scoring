@@ -4,65 +4,1406 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Скоринг ДП</title>
+    <title>Скоринг Департамента Продаж | Аналитика</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap font-display=swap"
+        rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        :root {
+            --bg-color: #f4f6fa;
+            --panel-bg: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+
+            --primary: #1e3a8a;
+            --primary-light: #3b82f6;
+            --accent: #6366f1;
+
+            --color-hot: #ef4444;
+            --color-warm: #f59e0b;
+            --color-cold: #10b981;
+
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.02);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.01);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.01);
+
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 16px;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border-color: #334155;
+
+            --primary: #3b82f6;
+            --primary-light: #60a5fa;
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            transition: background-color 0.25s ease, border-color 0.25s ease;
+        }
+
         body {
-            font-family: sans-serif;
-            max-width: 600px;
-            margin: 40px auto;
-            text-align: center;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
         }
 
-        .box {
-            padding: 20px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            background: #f9f9f9;
+        a {
+            color: var(--primary-light);
+            text-decoration: none;
         }
 
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            background: #007bff;
+        /* Top navigation header */
+        header {
+            background-color: var(--panel-bg);
+            border-bottom: 1px solid var(--border-color);
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
             color: white;
-            border: none;
-            border-radius: 4px;
-            margin-top: 15px;
+            width: 38px;
+            height: 38px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 18px;
+            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
         }
 
-        button:hover {
-            background: #0056b3;
+        .logo-title {
+            font-weight: 700;
+            font-size: 19px;
+            letter-spacing: -0.5px;
+            background: linear-gradient(to right, var(--text-primary), var(--primary-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .theme-toggle-btn {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 14px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .theme-toggle-btn:hover {
+            background-color: var(--border-color);
+        }
+
+        /* Container & Upload Section */
+        .workspace {
+            flex: 1;
+            padding: 32px;
+            max-width: 1600px;
+            width: 100%;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .upload-card {
+            background-color: var(--panel-bg);
+            border-radius: var(--radius-lg);
+            border: 1px dashed var(--primary-light);
+            padding: 60px 40px;
+            text-align: center;
+            box-shadow: var(--shadow-md);
+            max-width: 700px;
+            margin: 80px auto;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-card:hover {
+            border-color: var(--accent);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 24px;
+            display: inline-block;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-8px);
+            }
+        }
+
+        .upload-card h1 {
+            font-size: 26px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            letter-spacing: -0.5px;
+        }
+
+        .upload-card p {
+            color: var(--text-secondary);
+            font-size: 15px;
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+
+        .file-select-area {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+
+        .file-select-btn {
+            background-color: var(--primary);
+            color: white;
+            font-weight: 600;
+            padding: 14px 28px;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(30, 58, 138, 0.2);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 15px;
+        }
+
+        .file-select-btn:hover {
+            background-color: var(--primary-light);
+            transform: translateY(-1px);
         }
 
         input[type="file"] {
-            margin: 10px 0;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
         }
 
-        #status {
-            margin-top: 20px;
-            font-weight: bold;
+        .progress-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        [data-theme="dark"] .progress-overlay {
+            background: rgba(30, 41, 59, 0.9);
+        }
+
+        .spinner {
+            border: 4px solid var(--border-color);
+            border-left-color: var(--primary-light);
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Dashboard container (hidden initially) */
+        #dashboard {
+            display: none;
+            flex-direction: column;
+            gap: 24px;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* KPI widgets grid */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+        }
+
+        .kpi-card {
+            background-color: var(--panel-bg);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .kpi-card::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: var(--primary-light);
+        }
+
+        .kpi-card.hot::after {
+            background: var(--color-hot);
+        }
+
+        .kpi-card.warm::after {
+            background: var(--color-warm);
+        }
+
+        .kpi-card.cold::after {
+            background: var(--color-cold);
+        }
+
+        .kpi-title {
+            font-size: 13px;
+            text-transform: uppercase;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        .kpi-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.1;
+        }
+
+        .kpi-subtitle {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+        }
+
+        /* Analytics grid (Charts) */
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 1024px) {
+            .analytics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-box {
+            background-color: var(--panel-bg);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+        }
+
+        .chart-header h3 {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 320px;
+        }
+
+        /* Data list interface */
+        .list-card {
+            background-color: var(--panel-bg);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .list-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .list-header h3 {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .list-actions {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 10px 16px;
+            font-size: 14px;
+            width: 280px;
+            color: var(--text-primary);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary-light);
+        }
+
+        .filter-select {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 10px 16px;
+            font-size: 14px;
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+
+        .btn-download {
+            background-color: #10b981;
+            color: white;
+            padding: 10px 18px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .btn-download:hover {
+            background-color: #059669;
+        }
+
+        /* Data table styling */
+        .table-wrapper {
+            overflow-x: auto;
+            max-height: 500px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            background-color: var(--panel-bg);
+            color: var(--text-secondary);
+            font-weight: 600;
+            padding: 14px 20px;
+            border-bottom: 2px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        tr:hover td {
+            background-color: var(--bg-color);
+            cursor: pointer;
+        }
+
+        /* Custom Tags/Pills */
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .tag.hot {
+            background-color: rgba(239, 68, 68, 0.12);
+            color: var(--color-hot);
+        }
+
+        .tag.warm {
+            background-color: rgba(245, 158, 11, 0.12);
+            color: var(--color-warm);
+        }
+
+        .tag.cold {
+            background-color: rgba(16, 185, 129, 0.12);
+            color: var(--color-cold);
+        }
+
+        .tag.badge {
+            background-color: var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        .tag.badge.chuvash {
+            background-color: rgba(99, 102, 241, 0.15);
+            color: #4f46e5;
+        }
+
+        .tag.badge.redist {
+            background-color: rgba(139, 92, 246, 0.15);
+            color: #7c3aed;
+        }
+
+        /* Detail Modal Side-panel */
+        .modal {
+            position: fixed;
+            top: 0;
+            right: -550px;
+            width: 500px;
+            height: 100vh;
+            background-color: var(--panel-bg);
+            box-shadow: -10px 0 30px rgba(0, 0, 0, 0.1);
+            border-left: 1px solid var(--border-color);
+            z-index: 200;
+            transition: right 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .modal.open {
+            right: 0;
+        }
+
+        .modal-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            font-size: 18px;
+            font-weight: 700;
+            word-break: break-word;
+            max-width: 80%;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+
+        .modal-body {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 150;
+            display: none;
+        }
+
+        .modal-overlay.open {
+            display: block;
+        }
+
+        /* Custom widgets inside detail modal */
+        .score-circle-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            background-color: var(--bg-color);
+            padding: 20px;
+            border-radius: var(--radius-md);
+        }
+
+        .score-circle {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: conic-gradient(var(--primary-light) calc(var(--score-pct) * 1%), var(--border-color) 0);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .score-circle::before {
+            content: '';
+            position: absolute;
+            width: 84px;
+            height: 84px;
+            border-radius: 50%;
+            background-color: var(--panel-bg);
+        }
+
+        .score-circle span {
+            position: relative;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .category-breakdown {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .cat-row {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .cat-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+
+        .cat-name {
+            font-weight: 600;
+        }
+
+        .cat-score {
+            font-weight: 700;
+        }
+
+        .progress-bar-bg {
+            background-color: var(--border-color);
+            height: 8px;
+            border-radius: 9999px;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .progress-bar-fill {
+            background-color: var(--primary-light);
+            height: 100%;
+            border-radius: 9999px;
+        }
+
+        .diag-box {
+            background-color: var(--bg-color);
+            padding: 16px;
+            border-radius: var(--radius-md);
+            font-size: 13px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .diag-item {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .diag-label {
+            color: var(--text-secondary);
+        }
+
+        .diag-value {
+            font-weight: 600;
+        }
+
+        .status-pill {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: var(--radius-sm);
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .status-pill.success {
+            background-color: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+        }
+
+        .status-pill.danger {
+            background-color: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+        }
+
+        /* Empty state style */
+        .empty-state {
+            text-align: center;
+            opacity: 0.65;
+            padding: 40px;
         }
     </style>
 </head>
 
 <body>
-    <div class="box">
-        <h2>Скоринг Департамента Продаж</h2>
-        <input type="file" id="fileInput" accept=".xlsx, .xls">
-        <br>
-        <button onclick="upload()">Загрузить и Рассчитать</button>
-        <div id="status"></div>
+
+    <header>
+        <div class="logo-section">
+            <div class="logo-icon">C</div>
+            <div class="logo-title">Скоринг ДП • Metabase</div>
+        </div>
+        <div class="header-actions">
+            <span id="file-name-display" style="font-size: 14px; font-weight: 500; display: none;"></span>
+            <button class="theme-toggle-btn" onclick="toggleTheme()" id="themeToggleBtn">
+                🌙 Тёмная тема
+            </button>
+        </div>
+    </header>
+
+    <div class="workspace">
+        <!-- UPLOAD SECTION -->
+        <div class="upload-card" id="upload-panel">
+            <div class="progress-overlay" id="spinner-overlay">
+                <div class="spinner"></div>
+                <h3 style="font-weight: 600; color: var(--text-primary);">Идет расчет скоринга...</h3>
+                <p>Финансовая валидация, региональные коэффициенты, отраслевой анализ</p>
+            </div>
+            <span class="upload-icon">📊</span>
+            <h1>Загрузите Excel-файл для анализа</h1>
+            <p>
+                Поддерживаются файлы скоринга с полями: Выручка, ОС, УК, ИНН, Адрес, ОКВЭД и др.<br>
+                Автоматически учитывает региональные особенности (Чувашия х3 порог) и перераспределяет веса при
+                отсутствии финансов.
+            </p>
+            <div class="file-select-area">
+                <div class="file-select-btn">
+                    Выбрать файл и Начать
+                </div>
+                <input type="file" id="excelFile" accept=".xlsx, .xls" onchange="handleFileUpload(event)">
+            </div>
+            <div id="upload-status"
+                style="margin-top: 14px; font-size: 13px; font-weight: 600; color: var(--color-hot);"></div>
+        </div>
+
+        <!-- DASHBOARD SECTION -->
+        <div id="dashboard">
+            <!-- KPI CARDS -->
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-title">Всего контрагентов</div>
+                    <div class="kpi-value" id="kpi-total">0</div>
+                    <div class="kpi-subtitle">Размер обработанной базы</div>
+                </div>
+                <div class="kpi-card hot">
+                    <div class="kpi-title">Горячие Лиды</div>
+                    <div class="kpi-value" id="kpi-hot">0</div>
+                    <div class="kpi-subtitle">Готовы к быстрой продаже (>=70)</div>
+                </div>
+                <div class="kpi-card warm">
+                    <div class="kpi-title">Теплые / Холодные</div>
+                    <div class="kpi-value" id="kpi-warm-cold">0 / 0</div>
+                    <div class="kpi-subtitle">Требуется доработка отдела продаж</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">Средний балл</div>
+                    <div class="kpi-value" id="kpi-avg">0.0</div>
+                    <div class="kpi-subtitle">Общий уровень лидов по базе</div>
+                </div>
+                <div class="kpi-card" style="border-left: 4px solid var(--accent);">
+                    <div class="kpi-title">Адаптивный вес</div>
+                    <div class="kpi-value" id="kpi-redist">0</div>
+                    <div class="kpi-subtitle">Без фин. данных (веса адаптированы)</div>
+                </div>
+            </div>
+
+            <!-- ANALYTICS CHARTS -->
+            <div class="analytics-grid">
+                <!-- Bar Chart: Category Averages -->
+                <div class="chart-box">
+                    <div class="chart-header">
+                        <h3>Средние скоринг-баллы по категориям</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+                <!-- Segment Donut Chart -->
+                <div class="chart-box">
+                    <div class="chart-header">
+                        <h3>Конверсия базы по сегментам</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="segmentsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="kpi-grid" style="grid-template-columns: 1fr 1fr;">
+                <div class="kpi-card"
+                    style="flex-direction: row; align-items: center; justify-content: flex-start; gap: 20px;">
+                    <div style="font-size: 32px;">🦁</div>
+                    <div>
+                        <div class="kpi-title">Чувашская Республика</div>
+                        <div class="kpi-value" id="kpi-chuvash">0</div>
+                        <div class="kpi-subtitle">Компании с повышающим коэффициентом (порог / 3.0)</div>
+                    </div>
+                </div>
+                <div class="kpi-card"
+                    style="flex-direction: row; align-items: center; justify-content: flex-start; gap: 20px;">
+                    <div style="font-size: 32px;">🛑</div>
+                    <div>
+                        <div class="kpi-title">Сработали Стоп-Факторы</div>
+                        <div class="kpi-value" id="kpi-stops">0</div>
+                        <div class="kpi-subtitle">Из них по ОКВЭД: <span id="stop-c-count">0</span>, по Выручке: <span
+                                id="stop-a-count">0</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LEADS LIST CARD -->
+            <div class="list-card">
+                <div class="list-header">
+                    <h3>Детализированный реестр компаний</h3>
+                    <div class="list-actions">
+                        <input type="text" id="searchInput" class="search-input"
+                            placeholder="Поиск по ИНН или Названию..." oninput="applyFilters()">
+                        <select id="segmentFilter" class="filter-select" onchange="applyFilters()">
+                            <option value="">Все сегменты</option>
+                            <option value="Горячий">Горячие</option>
+                            <option value="Тёплый">Тёплые</option>
+                            <option value="Холодный">Холодные</option>
+                        </select>
+                        <select id="weightsFilter" class="filter-select" onchange="applyFilters()">
+                            <option value="">Все режимы весов</option>
+                            <option value="перераспределение (без A)">Без финансов (перераспределён)</option>
+                            <option value="стандартный">Стандартный расчет</option>
+                        </select>
+                        <select id="regionFilter" class="filter-select" onchange="applyFilters()">
+                            <option value="">Все регионы</option>
+                            <option value="chuvash">Чувашская Республика</option>
+                            <option value="other">Другие регионы</option>
+                        </select>
+                        <button class="btn-download" onclick="downloadScoredExcel()">
+                            📥 Скачать Excel с результатами
+                        </button>
+                    </div>
+                </div>
+                <div class="table-wrapper">
+                    <table id="leads-table">
+                        <thead>
+                            <tr>
+                                <th>Название / Компания</th>
+                                <th>ИНН</th>
+                                <th>Выручка</th>
+                                <th>A_score (Фин.)</th>
+                                <th>B_score (Масшт.)</th>
+                                <th>C_score (Отрасль)</th>
+                                <th>Итоговый скоринг</th>
+                                <th>Сегмент</th>
+                                <th>Режим весов</th>
+                                <th>Регион</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <!-- DETAIL POPUP -->
+    <div class="modal-overlay" id="modal-overlay" onclick="closeDetails()"></div>
+    <div class="modal" id="details-modal">
+        <div class="modal-header">
+            <h3 id="modal-company-name">Название компании</h3>
+            <button class="close-btn" onclick="closeDetails()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="score-circle-container">
+                <div class="score-circle" id="details-score-circle" style="--score-pct: 0;">
+                    <span id="modal-total-score">0.0</span>
+                </div>
+                <div>
+                    <div style="font-size: 14px; color: var(--text-secondary);">Итоговый скор-балл</div>
+                    <div class="tag" id="modal-segment-badge" style="margin-top: 8px;">Теплый</div>
+                </div>
+            </div>
+
+            <div>
+                <h4 style="font-size: 14px; margin-bottom: 12px; font-weight: 600;">Детализация по категориям скоринга:
+                </h4>
+                <div class="category-breakdown">
+                    <!-- Cat A -->
+                    <div class="cat-row">
+                        <div class="cat-info">
+                            <span class="cat-name">A. Финансовое здоровье</span>
+                            <span class="cat-score" id="modal-score-a">0 / 100</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" id="modal-bar-a" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                    <!-- Cat B -->
+                    <div class="cat-row">
+                        <div class="cat-info">
+                            <span class="cat-name">B. Масштаб и зрелость</span>
+                            <span class="cat-score" id="modal-score-b">0 / 100</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" id="modal-bar-b" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                    <!-- Cat C -->
+                    <div class="cat-row">
+                        <div class="cat-info">
+                            <span class="cat-name">C. Отраслевая релевантность</span>
+                            <span class="cat-score" id="modal-score-c">0 / 100</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" id="modal-bar-c" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                    <!-- Cat D -->
+                    <div class="cat-row">
+                        <div class="cat-info">
+                            <span class="cat-name">D. Доступность контакта</span>
+                            <span class="cat-score" id="modal-score-d">0 / 100</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" id="modal-bar-d" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                    <!-- Cat E -->
+                    <div class="cat-row">
+                        <div class="cat-info">
+                            <span class="cat-name">E. Юридический статус и риски</span>
+                            <span class="cat-score" id="modal-score-e">0 / 100</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" id="modal-bar-e" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Diagnostics -->
+            <div class="diag-box">
+                <h4 style="font-weight: 600; margin-bottom: 8px; font-size: 13px;">Диагностические данные компании:</h4>
+                <div class="diag-item">
+                    <span class="diag-label">ИНН:</span>
+                    <span class="diag-value" id="modal-inn">-</span>
+                </div>
+                <div class="diag-item">
+                    <span class="diag-label">Региональный Идентификатор:</span>
+                    <span class="diag-value" id="modal-region-coeff">Обычный (1.0x порогов)</span>
+                </div>
+                <div class="diag-item">
+                    <span class="diag-label">Метод расчета весов:</span>
+                    <span class="diag-value text-accent" id="modal-redist-info">Веса стандартные</span>
+                </div>
+                <div class="diag-item">
+                    <span class="diag-label">Финансовые данные в базе:</span>
+                    <span class="diag-value" id="modal-fin-exists">Есть</span>
+                </div>
+                <div class="diag-item">
+                    <span class="diag-label">Статус Категории C:</span>
+                    <span class="diag-value" id="modal-status-c">-</span>
+                </div>
+                <div class="diag-item"
+                    style="border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 4px;">
+                    <span class="diag-label">Адрес:</span>
+                    <span class="diag-value" id="modal-address"
+                        style="font-size: 11px; max-width: 70%; text-align: right; word-wrap: break-word;">-</span>
+                </div>
+            </div>
+
+            <!-- Stop factors alert box -->
+            <div class="diag-box" id="stop-factors-explain-box"
+                style="background-color: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: var(--radius-md);">
+                <div style="display: flex; gap: 8px; color: var(--color-hot); font-weight: 700;">
+                    <span>⚠️</span>
+                    <span>Сработали Стоп-Факторы:</span>
+                </div>
+                <ul id="modal-stop-factors-list"
+                    style="margin-left: 20px; margin-top: 6px; display: flex; flex-direction: column; gap: 4px;">
+                    <!-- Filled dynamically -->
+                </ul>
+            </div>
+        </div>
+    </div>
+
     <script>
-        async function upload() {
-            const file = document.getElementById('fileInput').files[0];
-            const status = document.getElementById('status');
-            if (!file) { status.innerText = 'Выберите файл!'; return; }
-            status.innerText = 'Обработка...';
+        let currentTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', currentTheme);
+        updateThemeButtonUI();
+
+        let dashboardData = null;
+        let originalFile = null;
+        let categoryChartInstance = null;
+        let segmentsChartInstance = null;
+
+        function toggleTheme() {
+            currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', currentTheme);
+            localStorage.setItem('theme', currentTheme);
+            updateThemeButtonUI();
+            if (dashboardData) {
+                renderCharts(dashboardData.stats);
+            }
+        }
+
+        function updateThemeButtonUI() {
+            const btn = document.getElementById('themeToggleBtn');
+            if (currentTheme === 'light') {
+                btn.innerHTML = '🌙 Тёмная тема';
+            } else {
+                btn.innerHTML = '☀️ Светлая тема';
+            }
+        }
+
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            originalFile = file;
+
+            const status = document.getElementById('upload-status');
+            const spinner = document.getElementById('spinner-overlay');
+            status.innerText = '';
+            spinner.style.display = 'flex';
 
             const formData = new FormData();
             formData.append('file', file);
+
+            try {
+                const res = await fetch('/api/score/full', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    dashboardData = data;
+
+                    // Hide upload card, show dashboard
+                    document.getElementById('upload-panel').style.display = 'none';
+                    document.getElementById('dashboard').style.display = 'flex';
+
+                    // Update header file info
+                    const fileDisplay = document.getElementById('file-name-display');
+                    fileDisplay.innerText = `Файл: ${file.name}`;
+                    fileDisplay.style.display = 'inline';
+
+                    // Process UI details
+                    populateKPIs(data.stats);
+                    renderCharts(data.stats);
+                    populateTable(data.records);
+                } else {
+                    const err = await res.json();
+                    status.innerText = `Ошибка расчета: ${err.detail || 'Неизвестная ошибка'}`;
+                }
+            } catch (e) {
+                console.error(e);
+                status.innerText = 'Сетевая ошибка при отправке файла.';
+            } finally {
+                spinner.style.display = 'none';
+            }
+        }
+
+        function populateKPIs(stats) {
+            document.getElementById('kpi-total').innerText = stats.total;
+            document.getElementById('kpi-hot').innerText = stats.segments.Горячий || 0;
+            document.getElementById('kpi-warm-cold').innerText = `${stats.segments.Тёплый || 0} / ${stats.segments.Холодный || 0}`;
+            document.getElementById('kpi-avg').innerText = stats.averages.total.toFixed(1);
+            document.getElementById('kpi-redist').innerText = stats.redistributed_count;
+            document.getElementById('kpi-chuvash').innerText = stats.chuvasia_count;
+
+            const totalStops = stats.stops.revenue_stop + stats.stops.industry_stop;
+            document.getElementById('kpi-stops').innerText = totalStops;
+            document.getElementById('stop-a-count').innerText = stats.stops.revenue_stop;
+            document.getElementById('stop-c-count').innerText = stats.stops.industry_stop;
+        }
+
+        function renderCharts(stats) {
+            const isDark = currentTheme === 'dark';
+            const textColor = isDark ? '#f8fafc' : '#1e293b';
+            const gridColor = isDark ? '#334155' : '#e2e8f0';
+
+            // 1. Categories Average Chart
+            if (categoryChartInstance) categoryChartInstance.destroy();
+            const ctxCat = document.getElementById('categoryChart').getContext('2d');
+            categoryChartInstance = new Chart(ctxCat, {
+                type: 'bar',
+                data: {
+                    labels: ['А Фин. здоровье', 'B Масштаб', 'C Отрасль', 'D Контакты', 'E Юр. статус'],
+                    datasets: [{
+                        label: 'Средний балл категории (0-100)',
+                        data: [
+                            stats.averages.A,
+                            stats.averages.B,
+                            stats.averages.C,
+                            stats.averages.D,
+                            stats.averages.E
+                        ],
+                        backgroundColor: [
+                            'rgba(59, 130, 246, 0.85)',
+                            'rgba(99, 102, 241, 0.85)',
+                            'rgba(16, 185, 129, 0.85)',
+                            'rgba(245, 158, 11, 0.85)',
+                            'rgba(139, 92, 246, 0.85)'
+                        ],
+                        borderColor: isDark ? '#1e293b' : '#ffffff',
+                        borderWidth: 2,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { padding: 12 }
+                    },
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 100,
+                            grid: { color: gridColor },
+                            ticks: { color: textColor }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: textColor }
+                        }
+                    }
+                }
+            });
+
+            // 2. Segment Donut Chart
+            if (segmentsChartInstance) segmentsChartInstance.destroy();
+            const ctxSeg = document.getElementById('segmentsChart').getContext('2d');
+            segmentsChartInstance = new Chart(ctxSeg, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Горячие', 'Тёплые', 'Холодные'],
+                    datasets: [{
+                        data: [
+                            stats.segments.Горячий || 0,
+                            stats.segments.Тёплый || 0,
+                            stats.segments.Холодный || 0
+                        ],
+                        backgroundColor: [
+                            '#ef4444', // Hot (Red)
+                            '#f59e0b', // Warm (Orange)
+                            '#10b981'  // Cold (Green)
+                        ],
+                        borderColor: isDark ? '#1e293b' : '#ffffff',
+                        borderWidth: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '65%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: textColor,
+                                font: { family: 'Inter', weight: 500, size: 12 },
+                                padding: 16
+                            }
+                        },
+                        tooltip: { padding: 12 }
+                    }
+                }
+            });
+        }
+
+        function populateTable(records) {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+
+            if (records.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10" class="empty-state">Нет данных, соответствующих выбранным фильтрам</td></tr>`;
+                return;
+            }
+
+            records.forEach(rec => {
+                const tr = document.createElement('tr');
+                tr.onclick = () => openDetails(rec);
+
+                // Segment cell class
+                let segClass = 'cold';
+                if (rec.scoring_segment === 'Горячий') segClass = 'hot';
+                else if (rec.scoring_segment === 'Тёплый') segClass = 'warm';
+
+                // Chuvasia badges selector
+                const isChuvash = rec.A_region_coeff > 1.0;
+                const chuvashBadge = isChuvash ? `<span class="tag badge chuvash" style="font-size:10px;">Чувашия х3</span>` : '';
+
+                // Weight redistribution badge
+                const redistMode = rec.scoring_weights_mode === 'перераспределение (без A)';
+                const weightBadge = redistMode ? `<span class="tag badge redist" style="font-size:10px;">Адаптив</span>` : '';
+
+                // Formatted Revenue
+                const revNum = parseFloat(rec.ui_revenue);
+                const revenueFormatted = !isNaN(revNum) && revNum > 0
+                    ? `${(revNum / 1_000_000).toFixed(1)} млн ₽`
+                    : '<span style="color:var(--text-secondary); font-style:italic;">н/д</span>';
+
+                tr.innerHTML = `
+                    <td>
+                        <div style="font-weight:600;">${rec.ui_name}</div>
+                        <div style="font-size:12px; color:var(--text-secondary); max-width: 320px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                            ${rec.ui_address}
+                        </div>
+                    </td>
+                    <td>${rec.ui_inn || '-'}</td>
+                    <td>${revenueFormatted}</td>
+                    <td style="font-weight:600;">${rec.A_score !== null ? rec.A_score : '-'}</td>
+                    <td>${rec.B_score !== null ? rec.B_score : '-'}</td>
+                    <td>${rec.C_score !== null ? rec.C_score : '-'}</td>
+                    <td style="font-weight:700; color:var(--primary-light);">${rec.scoring_total}</td>
+                    <td><span class="tag ${segClass}">${rec.scoring_segment}</span></td>
+                    <td>${weightBadge || '<span style="color:var(--text-secondary); font-size:11px;">стандартный</span>'}</td>
+                    <td>${chuvashBadge || '<span style="color:var(--text-secondary); font-size:11px;">РФ</span>'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function applyFilters() {
+            if (!dashboardData) return;
+
+            const searchQuery = document.getElementById('searchInput').value.toLowerCase().trim();
+            const segmentFilter = document.getElementById('segmentFilter').value;
+            const weightsFilter = document.getElementById('weightsFilter').value;
+            const regionFilter = document.getElementById('regionFilter').value;
+
+            const filtered = dashboardData.records.filter(rec => {
+                // Search query filter
+                const nameMatch = String(rec.ui_name).toLowerCase().includes(searchQuery);
+                const innMatch = String(rec.ui_inn).toLowerCase().includes(searchQuery);
+                if (searchQuery && !nameMatch && !innMatch) return false;
+
+                // Segment filter
+                if (segmentFilter && rec.scoring_segment !== segmentFilter) return false;
+
+                // Weighing mode filter
+                if (weightsFilter && rec.scoring_weights_mode !== weightsFilter) return false;
+
+                // Region filter
+                if (regionFilter) {
+                    const isChuvash = rec.A_region_coeff > 1.0;
+                    if (regionFilter === 'chuvash' && !isChuvash) return false;
+                    if (regionFilter === 'other' && isChuvash) return false;
+                }
+
+                return true;
+            });
+
+            populateTable(filtered);
+        }
+
+        function openDetails(rec) {
+            document.getElementById('modal-company-name').innerText = rec.ui_name;
+            document.getElementById('modal-total-score').innerText = rec.scoring_total.toFixed(1);
+
+            // Score circle
+            const circle = document.getElementById('details-score-circle');
+            circle.style.setProperty('--score-pct', rec.scoring_total);
+
+            // Segment badge
+            const badge = document.getElementById('modal-segment-badge');
+            badge.className = 'tag';
+            let segClass = 'cold';
+            if (rec.scoring_segment === 'Горячий') segClass = 'hot';
+            else if (rec.scoring_segment === 'Тёплый') segClass = 'warm';
+            badge.classList.add(segClass);
+            badge.innerText = rec.scoring_segment;
+
+            // Categories
+            const setCat = (catId, val) => {
+                document.getElementById(`modal-score-${catId}`).innerText = val !== null ? `${val} / 100` : 'н/д';
+                document.getElementById(`modal-bar-${catId}`).style.width = val !== null ? `${val}%` : '0%';
+            };
+            setCat('a', rec.A_score);
+            setCat('b', rec.B_score);
+            setCat('c', rec.C_score);
+            setCat('d', rec.D_score);
+            setCat('e', rec.E_score);
+
+            // Diags
+            document.getElementById('modal-inn').innerText = rec.ui_inn || 'Не указан';
+            document.getElementById('modal-address').innerText = rec.ui_address || 'Не указан';
+
+            const isChuvash = rec.A_region_coeff > 1.0;
+            document.getElementById('modal-region-coeff').innerHTML = isChuvash
+                ? `<span style="color:#4f46e5; font-weight:700;">Чувашская Республика (х3.0 пониженный финансовый порог)</span>`
+                : 'Обычный регион (Москва)';
+
+            const isRedist = rec.scoring_weights_mode === 'перераспределение (без A)';
+            document.getElementById('modal-redist-info').innerHTML = isRedist
+                ? `<span style="color:#7c3aed; font-weight:700;">Адаптивный (вес категории А перераспределен на B, C, D, E)</span>`
+                : 'Стандартный (Категория A внесена в итоговый скоринг)';
+
+            // Financial missing explanation
+            const hasFin = !rec.A_no_revenue_data;
+            document.getElementById('modal-fin-exists').innerHTML = hasFin
+                ? '<span class="status-pill success">Доступны</span>'
+                : '<span class="status-pill danger">Финансовые показатели отсутствуют в файле</span>';
+
+            document.getElementById('modal-status-c').innerHTML = rec.C_status === 'ок'
+                ? '<span class="status-pill success">ок</span>'
+                : `<span class="status-pill danger">${rec.C_status}</span>`;
+
+            // Stop-factors check
+            const stopList = document.getElementById('modal-stop-factors-list');
+            const explainBox = document.getElementById('stop-factors-explain-box');
+            stopList.innerHTML = '';
+            let hasStops = false;
+
+            if (rec.A_stop_factor === 0 && !rec.A_no_revenue_data) {
+                hasStops = true;
+                const li = document.createElement('li');
+                li.innerHTML = `<strong>Выручка ниже порогового значения:</strong> фактическая выручка меньше действующего порога равного <strong>${(540 / 3).toFixed(0)} - 360 млн. ₽</strong>`;
+                stopList.appendChild(li);
+            }
+
+            if (rec.C_stop_factor === 0) {
+                hasStops = true;
+                const li = document.createElement('li');
+                li.innerHTML = `<strong>Нецелевой сектор (ОКВЭД Тир 4):</strong> Указанный ОКВЭД относится к компаниям не представляющим коммерческого интереса`;
+                stopList.appendChild(li);
+            }
+
+            if (hasStops) {
+                explainBox.style.display = 'block';
+            } else {
+                explainBox.style.display = 'none';
+            }
+
+            // Open sidepanel
+            document.getElementById('details-modal').classList.add('open');
+            document.getElementById('modal-overlay').classList.add('open');
+        }
+
+        function closeDetails() {
+            document.getElementById('details-modal').classList.remove('open');
+            document.getElementById('modal-overlay').classList.remove('open');
+        }
+
+        async function downloadScoredExcel() {
+            if (!originalFile) return;
+            const formData = new FormData();
+            formData.append('file', originalFile);
 
             try {
                 const res = await fetch('/score', { method: 'POST', body: formData });
@@ -71,14 +1412,14 @@
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = 'scoring_result.xlsx';
+                    a.download = `scoring_final_${originalFile.name}`;
                     a.click();
-                    status.innerText = 'Готово! Файл скачивается.';
                 } else {
-                    status.innerText = 'Ошибка обработки файла.';
+                    alert('Не удалось скачать файл.');
                 }
             } catch (e) {
-                status.innerText = 'Ошибка сети.';
+                console.error(e);
+                alert('Ошибка сети.');
             }
         }
     </script>

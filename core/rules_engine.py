@@ -1,7 +1,8 @@
 """
 Rules Engine — применение весов категорий, стоп-факторов и сегментации.
 
-Веса из config/weights.yaml, стоп-факторы из категорийных модулей.
+Веса из config/weights.json, стоп-факторы из категорийных модулей.
+
 """
 import os
 import pandas as pd
@@ -47,15 +48,15 @@ def apply_rules(df: pd.DataFrame) -> pd.DataFrame:
     """
     Рассчитывает итоговый скоринг и сегмент.
 
-    Формула из Excel (ячейка AM2):
-      IF(OR(A=0, B=0, C=0, D=0, E=0), 0,
-         A*wA + B*wB + C*wC + D*wD + E*wE)
+    Логика:
+      1. Стандартный расчёт: A*wA + B*wB + C*wC + D*wD + E*wE
+      2. Если хотя бы одна категория == 0 → итог = 0
 
     Args:
         df: DataFrame с колонками A_score..E_score
 
     Returns:
-        df с колонками: scoring_total, scoring_segment
+        df с колонками: scoring_total, scoring_segment, scoring_weights_mode
     """
     result = df.copy()
     weights = _load_weights()
@@ -81,7 +82,10 @@ def apply_rules(df: pd.DataFrame) -> pd.DataFrame:
     total = np.where(any_zero, 0, np.round(weighted, 2))
     result["scoring_total"] = total
 
-    # Сегментация
+    # ─── Режим расчёта (для диагностики) ─────────────────────────────
+    result["scoring_weights_mode"] = "стандартный"
+
+    # ─── Сегментация ─────────────────────────────────────────────────
     def assign_segment(score):
         for seg in segments:
             if score >= seg["min"]:
