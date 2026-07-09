@@ -19,23 +19,16 @@ import numpy as np
 
 _CONF_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config")
 
-E_WEIGHTS = {
-    "liquidation": 0.4,
-    "okfs":        0.3,
-    "okopf":       0.2,
-    "inn_manager": 0.1,
-}
+def _load_config():
+    path = os.path.join(_CONF_DIR, "category_e_config.json")
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
-DEFAULT_OKFS_SCORE = 50
-DEFAULT_OKOPF_SCORE = 50
-
-# ─── Явное сопоставление логических полей с колонками входного файла ────
-COLUMN_MAP = {
-    "liquidation": "Ликвидация",
-    "okfs":        "ОКФС",
-    "okopf":       "ОКОПФ",
-    "inn_manager": "ИНН руководителя",
-}
+def _load_weights():
+    path = os.path.join(_CONF_DIR, "weights.json")
+    with open(path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+        return config["categories"]["E_legal_status"]["features"]
 
 
 def _load_reference(filename: str) -> dict:
@@ -90,6 +83,14 @@ def _score_from_reference(
 def score_category_e(df: pd.DataFrame) -> pd.DataFrame:
     result = df.copy()
     n_rows = len(result)
+
+    # Загрузка конфигов
+    config = _load_config()
+    weights = _load_weights()
+    COLUMN_MAP = config["column_map"]
+    DEFAULT_OKFS_SCORE = config["default_scores"]["okfs"]
+    DEFAULT_OKOPF_SCORE = config["default_scores"]["okopf"]
+    E_WEIGHTS = weights
 
     okfs_map = _load_okfs()
     okopf_map = _load_okopf()

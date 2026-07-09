@@ -25,64 +25,26 @@
   Чувашская Республика → Y=3.0  (порог / 3 → ниже входная планка)
   Прочие регионы       → Y=1.0  (стандартный порог)
 """
+import os
+import json
 import pandas as pd
 import numpy as np
 
+_CONF_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config")
 
-# ─── Пороги (AI12:AI19) ─────────────────────────────────────────────────────
-THRESHOLDS = {
-    "revenue":            360_000_000,   # AI12 — Выручка
-    "fixed_assets":        50_000_000,   # AI13 — Осн. средства
-    "charter_capital":     10_000_000,   # AI14 — Уст. капитал
-    "net_profit":          30_000_000,   # AI15 — Чистая прибыль
-    "operating_profit":    35_000_000,   # AI16 — Прибыль от продаж
-    "pretax_profit":       30_000_000,   # AI17 — Прибыль до н/о
-    "debt_kz_ratio":            0.3,     # AI18 — КЗ/Выручка
-    "debt_dz_ratio":            0.3,     # AI19 — ДЗ/Выручка
-}
+def _load_config():
+    path = os.path.join(_CONF_DIR, "category_a_config.json")
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
-# ─── Масштабные множители логарифма (AF114:AF119) ────────────────────────────
-LOG_SCALE = {
-    "revenue":          20,  # AF114
-    "fixed_assets":     20,  # AF115
-    "charter_capital":  40,  # AF116
-    "net_profit":       20,  # AF117
-    "operating_profit": 20,  # AF118
-    "pretax_profit":    20,  # AF119
-}
-
-# ─── Веса (AH12:AH19) ────────────────────────────────────────────────────────
-WEIGHTS = {
-    "revenue":          0.22,
-    "fixed_assets":     0.12,
-    "charter_capital":  0.06,
-    "net_profit":       0.20,
-    "operating_profit": 0.12,
-    "pretax_profit":    0.08,
-    "debt_kz":          0.12,
-    "debt_dz":          0.08,
-}
-
-# ─── Региональные коэффициенты (AF31, AF32) ──────────────────────────────────
-# Применяется только к Выручке, ОС и УК
-REGIONAL_COEFFICIENTS = {
-    "чуваш": 3.0,   # AF31 — Чувашская Республика
-}
-
-# ─── Маппинг колонок ─────────────────────────────────────────────────────────
-COLUMN_MAP = {
-    "revenue":          "Выручка",
-    "fixed_assets":     "Осн. средства",
-    "charter_capital":  "Уст. капитал",
-    "net_profit":       "Чистая прибыль",
-    "operating_profit": "Прибыль от продаж",
-    "pretax_profit":    "прибыль до налогообложения",
-    "debt_kz":          "Кред. задолженность",
-    "debt_dz":          "Деб. задолженность",
-}
+def _load_weights():
+    path = os.path.join(_CONF_DIR, "weights.json")
+    with open(path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+        return config["categories"]["A_financial_health"]["features"]
 
 
-def _detect_region_coeff(df: pd.DataFrame) -> pd.Series:
+def _detect_region_coeff(df: pd.DataFrame, regional_coeffs: dict) -> pd.Series:
     """
     Определяет региональный коэффициент Y по полю адреса.
     Соответствует формуле Y2 в Excel:
@@ -101,7 +63,7 @@ def _detect_region_coeff(df: pd.DataFrame) -> pd.Series:
 
     addr = df[addr_col].fillna("").astype(str).str.lower()
     mult = pd.Series(1.0, index=df.index)
-    for keyword, coeff in REGIONAL_COEFFICIENTS.items():
+    for keyword, coeff in regional_coeffs.items():
         mult = mult.where(~addr.str.contains(keyword, na=False), coeff)
 
     return mult
@@ -142,8 +104,17 @@ def score_category_a(df: pd.DataFrame) -> pd.DataFrame:
     """
     result = df.copy()
 
+    # Загрузка конфигов
+    config = _load_config()
+    weights = _load_weights()
+    THRESHOLDS = config["thresholds"]
+    LOG_SCALE = config["log_scale"]
+    COLUMN_MAP = config["column_map"]
+    REGIONAL_COEFFICIENTS = config["regional_coefficients"]
+    WEIGHTS = weights
+
     # Определяем региональный коэффициент Y
-    region_mult = _detect_region_coeff(result)
+    region_mult = _detect_region_coeff(result, REGIONAL_COEFFICIENTS)
 
     # Извлекаем сырые значения (NaN там, где данных нет)
     def get_numeric(col_prefix: str) -> pd.Series:

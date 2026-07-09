@@ -16,26 +16,24 @@
 Веса из Excel:
   Регистрация = 0.30, РМСП = 0.30, Сотрудники = 0.25, Запасы = 0.15
 """
+import os
+import json
 import pandas as pd
 import numpy as np
 from datetime import datetime
 
+_CONF_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config")
 
-# Веса признаков
-WEIGHTS = {
-    "registration": 0.30,
-    "rmsp":         0.30,
-    "employees":    0.25,
-    "reserves":     0.15,
-}
+def _load_config():
+    path = os.path.join(_CONF_DIR, "category_b_config.json")
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
-# Маппинг колонок
-COLUMN_MAP = {
-    "registration": "Регистрация",
-    "rmsp":         "РМСП",
-    "employees":    "кол-во сотрудников",
-    "reserves":     "Запасы",
-}
+def _load_weights():
+    path = os.path.join(_CONF_DIR, "weights.json")
+    with open(path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+        return config["categories"]["B_scale_maturity"]["features"]
 
 # Аналог Excel ПРОЦЕНТРАНГ.ВКЛ → rank(pct=True) * 100.
 def _percentile_rank(series: pd.Series) -> pd.Series:
@@ -85,19 +83,12 @@ def _log_score(series: pd.Series, cap: float = 100.0, special_one: float | None 
 
     return pd.Series(np.round(scores, 2), index=series.index)
 
-# Баллы РМСП:
-def _rmsp_score(series: pd.Series) -> pd.Series:
-    
-    MAPPING = {
-        "Микропредприятие": 25.0,
-        "Малое предприятие": 50.0,
-        "Среднее предприятие": 75.0,
-    }
+def _rmsp_score(series: pd.Series, mapping: dict) -> pd.Series:
 
     def _score_one(val):
         if pd.isna(val) or str(val).strip() == "":
             return 100.0
-        return MAPPING.get(str(val).strip(), 100.0)
+        return mapping.get(str(val).strip(), 100.0)
 
     return series.map(_score_one)
 
@@ -113,6 +104,13 @@ def score_category_b(df: pd.DataFrame) -> pd.DataFrame:
       B_stop_factor    — 1 если данные достаточны, 0 если стоп
     """
     result = df.copy()
+
+    # Загрузка конфигов
+    config = _load_config()
+    weights = _load_weights()
+    COLUMN_MAP = config["column_map"]
+    MAPPING = config["rmsp_mapping"]
+    WEIGHTS = weights
 
     def get_series(col_prefix):
         
@@ -138,7 +136,7 @@ def score_category_b(df: pd.DataFrame) -> pd.DataFrame:
     # РМСП:
     rmsp_col = get_series(COLUMN_MAP["rmsp"])
     if rmsp_col is not None:
-        score_rmsp = _rmsp_score(rmsp_col)
+        score_rmsp = _rmsp_score(rmsp_col, MAPPING)
     else:
         score_rmsp = pd.Series(100.0, index=result.index)  # нет колонки → считаем крупной
 

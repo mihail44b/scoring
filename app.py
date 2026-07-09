@@ -15,6 +15,7 @@ app.py — точка входа FastAPI (участник 5).
 """
 import sys
 import os
+import json
 import numpy as np
 
 # Добавляем dp_scoring в sys.path для корректных импортов
@@ -22,6 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import Response, JSONResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 import pandas as pd
 import io
 
@@ -42,11 +44,23 @@ app = FastAPI(
     version="0.1.0",
 )
 
+# Подключение статики (CSS, JS, изображения)
+app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")), name="static")
+
 
 @app.get("/")
 async def index():
     """Главная страница с загрузкой файла."""
     template_path = os.path.join(os.path.dirname(__file__), "templates", "index.html")
+    with open(template_path, "r", encoding="utf-8") as f:
+        html = f.read()
+    return HTMLResponse(content=html)
+
+
+@app.get("/settings")
+async def settings_page():
+    """Панель настроек конфигураций."""
+    template_path = os.path.join(os.path.dirname(__file__), "templates", "settings.html")
     with open(template_path, "r", encoding="utf-8") as f:
         html = f.read()
     return HTMLResponse(content=html)
@@ -244,6 +258,54 @@ async def score_full(file: UploadFile = File(...)):
         "stats": stats,
         "records": records,
     }
+
+
+# ─── SETTINGS API (Управление конфигами) ───────────────────────────────────────
+CONF_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config")
+
+@app.get("/api/settings/configs")
+async def get_all_configs():
+    """
+    Возвращает содержимое всех JSON-файлов из папки config.
+    Используется страницей настроек для отрисовки всех текущих весов, порогов и маппингов.
+    """
+    configs = {}
+    if not os.path.exists(CONF_DIR):
+        return configs
+        
+    for filename in os.listdir(CONF_DIR):
+        if filename.endswith(".json"):
+            path = os.path.join(CONF_DIR, filename)
+            with open(path, "r", encoding="utf-8") as f:
+                try:
+                    configs[filename] = json.load(f)
+                except json.JSONDecodeError:
+                    configs[filename] = {"error": "Invalid JSON"}
+    return configs
+
+
+@app.post("/api/settings/configs")
+async def update_configs(payload: dict):
+    """
+    Обновляет указанные JSON-файлы в папке config.
+    Ожидает формат body: {"weights.json": {...}, "category_a_config.json": {...}}
+    """
+    updated_files = []
+    for filename, content in payload.items():
+        # Защита от записи за пределы папки config (directory traversal)
+        if not filename.endswith(".json") or "/" in filename or "\\" in filename:
+            raise HTTPException(status_code=400, detail=f"Недопустимое имя файла: {filename}")
+            
+        if isinstance(content, dict):
+            path = os.path.join(CONF_DIR, filename)
+            if os.path.exists(path):
+                with open(path, "w", encoding="utf-8") as f:
+                    json.dump(content, f, ensure_ascii=False, indent=2)
+                updated_files.append(filename)
+            else:
+                raise HTTPException(status_code=404, detail=f"Конфигурационный файл {filename} не найден")
+                
+    return {"status": "ok", "message": "Конфигурации успешно обновлены", "updated": updated_files}
 
 
 @app.post("/score/preview")
