@@ -12,7 +12,7 @@ ID_COLUMNS = ["ОГРН", "ИНН", "Краткое наименование"]
 # Колонки скоринга (порядок как в Excel)
 SCORE_COLUMNS = [
     "A_score", "B_score", "C_score", "D_score", "E_score",
-    "scoring_total", "scoring_segment",
+    "scoring_total", "enrichment_priority", "scoring_segment",
 ]
 
 # Доп. диагностические колонки
@@ -22,6 +22,7 @@ DIAG_COLUMNS = [
     "C_completeness", "C_stop_factor", "C_status",
     "D_completeness", "D_stop_factor",
     "E_completeness", "E_stop_factor",
+    "scoring_entropy",
 ]
 
 # Перевод колонок на русский язык для итогового файла
@@ -44,7 +45,9 @@ RENAME_MAP = {
     "E_completeness": "Полнота данных (E) %",
     "E_stop_factor": "Стоп-фактор (E)",
     "scoring_total": "Итоговый скоринг",
+    "enrichment_priority": "Приоритет обогащения",
     "scoring_segment": "Сегмент",
+    "scoring_entropy": "Энтропия",
 }
 
 
