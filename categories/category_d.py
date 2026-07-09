@@ -1,18 +1,17 @@
 """
 Категория D — Доступность контакта (участник 4).
 
-Логика 1:1 повторяет формулы из Excel-листа
-«Категория D Доступность контакт» (столбцы J–Q):
-  J..O — балл по каждому полю (0/100)
-  P    — итоговый балл категории
-  Q    — стоп-фактор
+У категории D больше НЕТ стоп-фактора — отсутствие контактов
+(телефона/email) не отсеивает лид, а просто даёт низкий балл по
+категории. Вместо стоп-фактора считаем диагностическую колонку
+D_contact_status — есть ли у клиента телефон и/или email.
 """
 from __future__ import annotations
 
 import pandas as pd
 import numpy as np
 
-# ─── Веса категории D (из формулы P2 в Excel) ───────────────────────────
+# ─── Веса категории D ────────────────────────────────────────────────────
 D_WEIGHTS = {
     "phone":    0.25,
     "email":    0.25,
@@ -23,9 +22,6 @@ D_WEIGHTS = {
 }
 
 # ─── Явное сопоставление логических полей с колонками входного файла ────
-# Явный маппинг вместо поиска по подстроке: надёжнее, не зависит от
-# порядка колонок и не может случайно "перехватить" похожую колонку
-# (например "Email" внутри "Доп. Email").
 COLUMN_MAP = {
     "phone":    "Телефоны",
     "email":    "Email",
@@ -44,17 +40,30 @@ def _get_series(df: pd.DataFrame, column_name: str) -> pd.Series | None:
 
 
 def _is_present(series: pd.Series | None, n_rows: int) -> np.ndarray:
-    """
-    Возвращает массив длины n_rows со значениями 100/0.
-    Если колонка отсутствует во входном файле — считаем поле
-    незаполненным для всех строк (а не роняем расчёт).
-    """
+    """Возвращает массив длины n_rows со значениями 100/0."""
     if series is None:
         return np.zeros(n_rows, dtype=float)
     return np.where(
         series.notna() & (series.astype(str).str.strip() != ""),
         100.0, 0.0,
     )
+
+
+def _contact_status(has_phone: np.ndarray, has_email: np.ndarray) -> np.ndarray:
+    """
+    Диагностическая колонка наличия ключевых каналов связи.
+    Заменяет прежний стоп-фактор — используется для ручной фильтрации/анализа,
+    но не влияет на сам балл категории.
+    """
+    status = np.full(has_phone.shape, "нет контактов", dtype=object)
+    both = (has_phone > 0) & (has_email > 0)
+    phone_only = (has_phone > 0) & (has_email == 0)
+    email_only = (has_phone == 0) & (has_email > 0)
+
+    status[phone_only] = "только телефон"
+    status[email_only] = "только email"
+    status[both] = "телефон и email"
+    return status
 
 
 def score_category_d(df: pd.DataFrame) -> pd.DataFrame:
@@ -68,11 +77,9 @@ def score_category_d(df: pd.DataFrame) -> pd.DataFrame:
     s_mgr   = _is_present(_get_series(result, COLUMN_MAP["manager"]), n_rows)
     s_pos   = _is_present(_get_series(result, COLUMN_MAP["position"]), n_rows)
 
-    # Q: стоп-фактор — если пусты и телефон, и email
-    stop_factor = np.where((s_phone == 0) & (s_email == 0), 0, 1).astype(int)
-
-    # Взвешенная сумма по весам полей
-    weighted = (
+    # Итоговый балл — просто взвешенная сумма, без стоп-фактора.
+    # Если все поля пусты, сумма и так естественным образом равна 0.
+    total = (
         s_phone * D_WEIGHTS["phone"]
         + s_email * D_WEIGHTS["email"]
         + s_web * D_WEIGHTS["website"]
@@ -80,11 +87,6 @@ def score_category_d(df: pd.DataFrame) -> pd.DataFrame:
         + s_mgr * D_WEIGHTS["manager"]
         + s_pos * D_WEIGHTS["position"]
     )
-
-    # P: если пусты телефон, сайт, адрес и email одновременно — итог 0,
-    # иначе взвешенная сумма, домноженная на стоп-фактор
-    no_key_contacts = (s_phone == 0) & (s_web == 0) & (s_addr == 0) & (s_email == 0)
-    total = np.where(no_key_contacts, 0.0, weighted) * stop_factor
 
     # completeness: доля заполненных из 6 полей
     n_fields = len(D_WEIGHTS)
@@ -100,6 +102,6 @@ def score_category_d(df: pd.DataFrame) -> pd.DataFrame:
 
     result["D_score"] = np.round(total, 1)
     result["D_completeness"] = completeness
-    result["D_stop_factor"] = stop_factor
+    result["D_contact_status"] = _contact_status(s_phone, s_email)
 
     return result
