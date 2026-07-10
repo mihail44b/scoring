@@ -1,24 +1,15 @@
 """
-app.py — точка входа FastAPI (участник 5).
+app.py — точка входа FastAPI.
 
 Эндпоинты:
   POST /score  — загрузить Excel-файл, получить скоринг в формате Excel
   GET  /health — проверка работоспособности
-
-Оркестрация:
-  1. Приём файла
-  2. Валидация структуры
-  3. Вызов категорийных функций через feature_builder
-  4. Применение весов и сегментации через rules_engine
-  5. Формирование объяснений
-  6. Сборка результата и экспорт
 """
 import sys
 import os
 import json
 import numpy as np
 
-# Добавляем dp_scoring в sys.path для корректных импортов
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
@@ -28,29 +19,30 @@ import pandas as pd
 import io
 
 from core.validator import validate_input
-from core.feature_builder import build_features
-from core.rules_engine import apply_rules
+from core.engine import calculate_scoring
 from core.result_builder import build_result
 from core.exporter import export_to_excel
 
 
 app = FastAPI(
-    title="Скоринг ДП",
-    description=(
-        "Сервис скоринга деловых партнёров.\n\n"
-        "Загрузите Excel-файл с данными компаний → "
-        "получите файл с рассчитанными баллами по 5 категориям и итоговым скорингом."
-    ),
-    version="0.1.0",
+    title="Скоринг ДП (Динамический)",
+    description="Универсальный сервис скоринга деловых партнёров на базе пресетов.",
+    version="2.0.0",
 )
 
-# Подключение статики (CSS, JS, изображения)
 app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")), name="static")
+
+PRESETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config", "presets")
+
+def get_active_preset() -> dict:
+    """Загружает активный пресет. Пока хардкод на legacy_default.json."""
+    path = os.path.join(PRESETS_DIR, "legacy_default.json")
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
 @app.get("/")
 async def index():
-    """Главная страница с загрузкой файла."""
     template_path = os.path.join(os.path.dirname(__file__), "templates", "index.html")
     with open(template_path, "r", encoding="utf-8") as f:
         html = f.read()
@@ -59,7 +51,6 @@ async def index():
 
 @app.get("/settings")
 async def settings_page():
-    """Панель настроек конфигураций."""
     template_path = os.path.join(os.path.dirname(__file__), "templates", "settings.html")
     with open(template_path, "r", encoding="utf-8") as f:
         html = f.read()
@@ -68,44 +59,23 @@ async def settings_page():
 
 @app.get("/health")
 async def health():
-    """Проверка работоспособности."""
-    return {"status": "ok", "version": "0.1.0"}
+    return {"status": "ok", "version": "2.0.0"}
 
 
-@app.post(
-    "/score",
-    summary="Скоринг Excel-файла",
-    description=(
-        "Загрузите Excel-файл (формат .xlsx) с данными компаний.\n"
-        "Возвращает Excel-файл с рассчитанными баллами."
-    ),
-)
-async def score_file(file: UploadFile = File(..., description="Excel-файл (.xlsx)")):
-    """
-    Основной эндпоинт скоринга.
-
-    Принимает Excel-файл, обрабатывает все 5 категорий,
-    возвращает Excel с результатами.
-    """
-    # Проверка формата
+@app.post("/score")
+async def score_file(file: UploadFile = File(...)):
     if not file.filename.endswith((".xlsx", ".xls")):
-        raise HTTPException(
-            status_code=400,
-            detail="Поддерживаются только файлы .xlsx/.xls"
-        )
+        raise HTTPException(status_code=400, detail="Поддерживаются только файлы .xlsx/.xls")
 
-    # Чтение файла
     try:
         content = await file.read()
         df = pd.read_excel(io.BytesIO(content), sheet_name=0)
     except Exception as e:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Ошибка чтения файла: {str(e)}"
-        )
+        raise HTTPException(status_code=400, detail=f"Ошибка чтения файла: {str(e)}")
 
-    # Валидация
-    validation = validate_input(df)
+    preset = get_active_preset()
+    validation = validate_input(df, preset)
+    
     if not validation.is_valid:
         return JSONResponse(
             status_code=422,
@@ -116,137 +86,81 @@ async def score_file(file: UploadFile = File(..., description="Excel-файл (.
             }
         )
 
-    # Обработка
     try:
-        df = build_features(df)
-        df = apply_rules(df)
-        df = build_result(df, include_source=True)
+        df_scored = calculate_scoring(df, preset)
+        df_res = build_result(df_scored, preset, include_source=True)
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Ошибка обработки: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Ошибка обработки: {str(e)}")
 
-    # Экспорт
-    xlsx_bytes = export_to_excel(df)
+    xlsx_bytes = export_to_excel(df_res)
 
     return Response(
         content=xlsx_bytes,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={
-            "Content-Disposition": "attachment; filename=scoring_result.xlsx"
-        },
+        headers={"Content-Disposition": "attachment; filename=scoring_result.xlsx"},
     )
 
 
 @app.post("/api/score/full")
 async def score_full(file: UploadFile = File(...)):
-    """
-    Полный расчет скоринга с возвращением JSON-данных для дашборда.
-    """
     if not file.filename.endswith((".xlsx", ".xls")):
         raise HTTPException(status_code=400, detail="Только .xlsx")
 
-    # Чтение
     try:
         content = await file.read()
         df = pd.read_excel(io.BytesIO(content), sheet_name=0)
     except Exception as e:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Ошибка чтения файла: {str(e)}"
-        )
+        raise HTTPException(status_code=400, detail=f"Ошибка чтения файла: {str(e)}")
 
-    # Валидация
-    validation = validate_input(df)
+    preset = get_active_preset()
+    validation = validate_input(df, preset)
+    
     if not validation.is_valid:
-        return JSONResponse(
-            status_code=422,
-            content={
-                "detail": "Ошибка валидации входных данных",
-                "errors": validation.errors,
-                "warnings": validation.warnings,
-            }
-        )
+        return JSONResponse(status_code=422, content={
+            "detail": "Ошибка валидации",
+            "errors": validation.errors,
+            "warnings": validation.warnings,
+        })
 
-    # Расчет
     try:
-        df_feat = build_features(df)
-        df_scored = apply_rules(df_feat)
+        df_scored = calculate_scoring(df, preset)
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Ошибка при расчете скоринга: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Ошибка расчетов: {str(e)}")
 
-    # Подготовка данных для JSON (замена NaN, Inf -> None)
     df_clean = df_scored.copy()
     
-    # Ищем ключевые колонки
     def find_col(prefixes):
         for pref in prefixes:
             col = next((c for c in df_clean.columns if pref.lower() in str(c).lower()), None)
-            if col:
-                return col
+            if col: return col
         return None
 
     address_col = find_col(["адрес", "регион", "местонахождение"])
     industry_col = find_col(["оквэд", "отрасль"])
     revenue_col = find_col(["выручка", "доход"])
 
-    # Приводим к общему виду для UI
     df_clean["ui_inn"] = df_clean.get("ИНН", pd.Series("", index=df_clean.index)).astype(str).str.strip()
     df_clean["ui_name"] = df_clean.get("Краткое наименование", df_clean.get("Название", pd.Series("Неизвестно", index=df_clean.index)))
     df_clean["ui_address"] = df_clean[address_col] if address_col else "Не указан"
     df_clean["ui_industry"] = df_clean[industry_col] if industry_col else "Не указана"
     df_clean["ui_revenue"] = df_clean[revenue_col] if revenue_col else 0
 
-    # Замена NaN -> None для корректного JSON
     df_clean = df_clean.replace({np.nan: None, pd.NA: None})
-    
     records = df_clean.to_dict(orient="records")
 
-    # Считаем агрегированные метрики для дашборда
     total = len(df_scored)
+    segment_counts = df_scored.get("scoring_segment", pd.Series([], dtype=str)).value_counts().to_dict()
     
-    segment_counts = df_scored["scoring_segment"].value_counts().to_dict()
-    for seg in ["Горячий", "Тёплый", "Холодный"]:
-        if seg not in segment_counts:
-            segment_counts[seg] = 0
+    chuvasia_count = int((df_scored.get("_region_mult", pd.Series([1.0])) > 1.0).sum()) if "_region_mult" in df_scored.columns else 0
 
-    chuvasia_mask = df_scored["A_region_coeff"] > 1.0
-    chuvasia_count = int(chuvasia_mask.sum())
+    averages = {"total": round(float(df_scored.get("scoring_total", pd.Series([0])).mean()), 2) if total > 0 else 0}
+    for cat in preset.get("categories", []):
+        cat_id = cat["id"]
+        col = f"{cat_id}_score"
+        averages[cat_id] = round(float(df_scored.get(col, pd.Series([0])).mean()), 2) if total > 0 and col in df_scored.columns else 0
 
-    # Средние баллы
-    avg_score = round(float(df_scored["scoring_total"].mean()), 2) if total > 0 else 0
-    avg_a = round(float(df_scored["A_score"].mean()), 2) if total > 0 else 0
-    avg_b = round(float(df_scored["B_score"].mean()), 2) if total > 0 else 0
-    avg_c = round(float(df_scored["C_score"].mean()), 2) if total > 0 else 0
-    avg_d = round(float(df_scored["D_score"].mean()), 2) if total > 0 else 0
-    avg_e = round(float(df_scored["E_score"].mean()), 2) if total > 0 else 0
-
-    # Самые частые нарушения/причины
-    # A_stop_factor == 0 — выручка ниже порога (для стандартного расчета)
-    a_stopped = int((df_scored["A_stop_factor"] == 0).sum())
-    c_stopped = int((df_scored["C_stop_factor"] == 0).sum())
-
-    stats = {
-        "total": total,
-        "segments": segment_counts,
-        "chuvasia_count": chuvasia_count,
-        "averages": {
-            "total": avg_score,
-            "A": avg_a,
-            "B": avg_b,
-            "C": avg_c,
-            "D": avg_d,
-            "E": avg_e,
-        },
-        "stops": {
-            "revenue_stop": a_stopped,
-            "industry_stop": c_stopped
-        }
-    }
+    a_stopped = int((df_scored.get("A_stop_factor", pd.Series([1])) == 0).sum()) if "A_stop_factor" in df_scored.columns else 0
+    c_stopped = int((df_scored.get("C_stop_factor", pd.Series([1])) == 0).sum()) if "C_stop_factor" in df_scored.columns else 0
 
     return {
         "validation": {
@@ -255,84 +169,63 @@ async def score_full(file: UploadFile = File(...)):
             "warnings": validation.warnings,
             "available_categories": validation.available_categories,
         },
-        "stats": stats,
+        "stats": {
+            "total": total,
+            "segments": segment_counts,
+            "chuvasia_count": chuvasia_count,
+            "averages": averages,
+            "stops": {"revenue_stop": a_stopped, "industry_stop": c_stopped}
+        },
         "records": records,
     }
 
 
-# ─── SETTINGS API (Управление конфигами) ───────────────────────────────────────
-CONF_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config")
-
 @app.get("/api/settings/configs")
 async def get_all_configs():
-    """
-    Возвращает содержимое всех JSON-файлов из папки config.
-    Используется страницей настроек для отрисовки всех текущих весов, порогов и маппингов.
-    """
     configs = {}
-    if not os.path.exists(CONF_DIR):
+    if not os.path.exists(PRESETS_DIR):
         return configs
-        
-    for filename in os.listdir(CONF_DIR):
+    for filename in os.listdir(PRESETS_DIR):
         if filename.endswith(".json"):
-            path = os.path.join(CONF_DIR, filename)
-            with open(path, "r", encoding="utf-8") as f:
-                try:
-                    configs[filename] = json.load(f)
-                except json.JSONDecodeError:
-                    configs[filename] = {"error": "Invalid JSON"}
+            with open(os.path.join(PRESETS_DIR, filename), "r", encoding="utf-8") as f:
+                try: configs[filename] = json.load(f)
+                except: configs[filename] = {"error": "Invalid JSON"}
     return configs
 
 
 @app.post("/api/settings/configs")
 async def update_configs(payload: dict):
-    """
-    Обновляет указанные JSON-файлы в папке config.
-    Ожидает формат body: {"weights.json": {...}, "category_a_config.json": {...}}
-    """
     updated_files = []
     for filename, content in payload.items():
-        # Защита от записи за пределы папки config (directory traversal)
         if not filename.endswith(".json") or "/" in filename or "\\" in filename:
             raise HTTPException(status_code=400, detail=f"Недопустимое имя файла: {filename}")
-            
         if isinstance(content, dict):
-            path = os.path.join(CONF_DIR, filename)
-            if os.path.exists(path):
-                with open(path, "w", encoding="utf-8") as f:
-                    json.dump(content, f, ensure_ascii=False, indent=2)
-                updated_files.append(filename)
-            else:
-                raise HTTPException(status_code=404, detail=f"Конфигурационный файл {filename} не найден")
-                
-    return {"status": "ok", "message": "Конфигурации успешно обновлены", "updated": updated_files}
+            path = os.path.join(PRESETS_DIR, filename)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(content, f, ensure_ascii=False, indent=2)
+            updated_files.append(filename)
+    return {"status": "ok", "message": "Пресеты обновлены", "updated": updated_files}
 
 
 @app.post("/score/preview")
 async def score_preview(file: UploadFile = File(...)):
-    """
-    Превью результатов скоринга в JSON (первые 10 строк).
-    Полезно для отладки.
-    """
     if not file.filename.endswith((".xlsx", ".xls")):
         raise HTTPException(status_code=400, detail="Только .xlsx")
 
     content = await file.read()
     df = pd.read_excel(io.BytesIO(content), sheet_name=0)
 
-    validation = validate_input(df)
+    preset = get_active_preset()
+    validation = validate_input(df, preset)
+    df_scored = calculate_scoring(df, preset)
 
-    df = build_features(df)
-    df = apply_rules(df)
-
-    preview_cols = [
-        "ИНН", "Краткое наименование",
-        "A_score", "B_score", "C_score", "D_score", "E_score",
-        "scoring_total", "enrichment_priority", "scoring_segment",
-    ]
-    existing = [c for c in preview_cols if c in df.columns]
+    preview_cols = preset.get("id_columns", [])
+    for cat in preset.get("categories", []):
+        preview_cols.append(f"{cat['id']}_score")
+    preview_cols.extend(["scoring_total", "enrichment_priority", "scoring_segment"])
     
-    df_clean = df[existing].replace({np.nan: None, pd.NA: None})
+    existing = [c for c in preview_cols if c in df_scored.columns]
+    df_clean = df_scored[existing].replace({np.nan: None, pd.NA: None})
     preview = df_clean.head(10).to_dict(orient="records")
 
     return {
@@ -344,4 +237,3 @@ async def score_preview(file: UploadFile = File(...)):
         },
         "preview": preview,
     }
-

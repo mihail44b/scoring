@@ -1,0 +1,655 @@
+{
+  "id_columns": [
+    "ОГРН",
+    "ИНН",
+    "Краткое наименование"
+  ],
+  "segments": {
+    "hot": {
+      "min_score": 70,
+      "label": "Горячий"
+    },
+    "warm": {
+      "min_score": 40,
+      "label": "Тёплый"
+    },
+    "cold": {
+      "min_score": 0,
+      "label": "Холодный"
+    }
+  },
+  "enrichment_weights": {
+    "score_weight": 0.6,
+    "entropy_weight": 0.4
+  },
+  "regional_coefficients": {
+    "keywords": [
+      "адрес",
+      "регион",
+      "местонахождение"
+    ],
+    "rules": {
+      "чуваш": 3
+    }
+  },
+  "categories": [
+    {
+      "id": "A",
+      "name": "Фин. здоровье",
+      "weight": 0.96,
+      "stop_factors": [
+        {
+          "type": "numeric_condition",
+          "feature": "revenue",
+          "operator": "<",
+          "use_regional_coeff": "true"
+        }
+      ],
+      "features": [
+        {
+          "id": "revenue",
+          "weight": 0.22,
+          "scoring_method": {
+            "type": "log_scale",
+            "params": {
+              "threshold": 360000000,
+              "scale": 20,
+              "apply_regional_coeff": "true"
+            }
+          },
+          "name": "Выручка"
+        },
+        {
+          "id": "fixed_assets",
+          "weight": 0.12,
+          "scoring_method": {
+            "type": "log_scale",
+            "params": {
+              "threshold": 50000000,
+              "scale": 20,
+              "apply_regional_coeff": "true"
+            }
+          },
+          "name": "Осн. средства"
+        },
+        {
+          "id": "charter_capital",
+          "weight": 0.06,
+          "scoring_method": {
+            "type": "log_scale",
+            "params": {
+              "threshold": 10000000,
+              "scale": 40,
+              "apply_regional_coeff": "true"
+            }
+          },
+          "name": "Уст. капитал"
+        },
+        {
+          "id": "net_profit",
+          "weight": 0.2,
+          "scoring_method": {
+            "type": "log_scale",
+            "params": {
+              "threshold": 30000000,
+              "scale": 20,
+              "apply_regional_coeff": "false"
+            }
+          },
+          "name": "Чистая прибыль"
+        },
+        {
+          "id": "operating_profit",
+          "weight": 0.12,
+          "scoring_method": {
+            "type": "log_scale",
+            "params": {
+              "threshold": 35000000,
+              "scale": 20,
+              "apply_regional_coeff": "false"
+            }
+          },
+          "name": "Прибыль от продаж"
+        },
+        {
+          "id": "pretax_profit",
+          "weight": 0.08,
+          "scoring_method": {
+            "type": "log_scale",
+            "params": {
+              "threshold": 30000000,
+              "scale": 20,
+              "apply_regional_coeff": "false"
+            }
+          },
+          "name": "прибыль до налогообложения"
+        },
+        {
+          "id": "debt_kz",
+          "weight": 0.12,
+          "scoring_method": {
+            "type": "debt_ratio",
+            "params": {
+              "threshold": 0.3,
+              "revenue_feature": "revenue"
+            }
+          },
+          "name": "Кред. задолженность"
+        },
+        {
+          "id": "debt_dz",
+          "weight": 0.08,
+          "scoring_method": {
+            "type": "debt_ratio",
+            "params": {
+              "threshold": 0.3,
+              "revenue_feature": "revenue"
+            }
+          },
+          "name": "Деб. задолженность"
+        }
+      ]
+    },
+    {
+      "id": "B",
+      "name": "Масштаб и зрелость",
+      "weight": 0.01,
+      "stop_factors": [
+        {
+          "type": "exact_value",
+          "feature": "employees",
+          "value": 0
+        },
+        {
+          "type": "exact_value",
+          "feature": "reserves",
+          "value": 0
+        }
+      ],
+      "features": [
+        {
+          "id": "registration",
+          "weight": 0.3,
+          "scoring_method": {
+            "type": "percentile_rank"
+          },
+          "name": "Регистрация"
+        },
+        {
+          "id": "rmsp",
+          "weight": 0.3,
+          "scoring_method": {
+            "type": "categorical_mapping",
+            "params": {
+              "mapping": {
+                "Микропредприятие": 25,
+                "Малое предприятие": 50,
+                "Среднее предприятие": 75
+              },
+              "default_score": 100,
+              "empty_score": 100
+            }
+          },
+          "name": "РМСП"
+        },
+        {
+          "id": "employees",
+          "weight": 0.25,
+          "scoring_method": {
+            "type": "log_score_simple",
+            "params": {
+              "cap": 100,
+              "special_one": 1
+            }
+          },
+          "name": "кол-во сотрудников"
+        },
+        {
+          "id": "reserves",
+          "weight": 0.15,
+          "scoring_method": {
+            "type": "log_score_simple",
+            "params": {
+              "cap": 100
+            }
+          },
+          "name": "Запасы"
+        }
+      ]
+    },
+    {
+      "id": "C",
+      "name": "Отраслевая релевантность",
+      "weight": 0.01,
+      "stop_factors": [
+        {
+          "type": "categorical_in",
+          "feature": "okved",
+          "values_with_score": 0
+        }
+      ],
+      "features": [
+        {
+          "id": "okved",
+          "weight": 0.8,
+          "scoring_method": {
+            "type": "okved_mapping",
+            "params": {
+              "mapping": {
+                "10": 100,
+                "11": 100,
+                "14": 60,
+                "16": 60,
+                "17": 60,
+                "18": 30,
+                "20": 60,
+                "21": 60,
+                "22": 60,
+                "23": 60,
+                "24": 60,
+                "25": 60,
+                "26": 60,
+                "27": 100,
+                "28": 60,
+                "29": 60,
+                "30": 60,
+                "31": 30,
+                "32": 30,
+                "33": 60,
+                "35": 60,
+                "36": 30,
+                "37": 30,
+                "38": 30,
+                "41": 100,
+                "42": 100,
+                "43": 100,
+                "45": 60,
+                "46": 60,
+                "47": 60,
+                "49": 60,
+                "50": 60,
+                "51": 60,
+                "52": 60,
+                "55": 30,
+                "56": 30,
+                "58": 30,
+                "59": 30,
+                "60": 30,
+                "61": 60,
+                "62": 100,
+                "63": 100,
+                "64": 60,
+                "66": 60,
+                "68": 100,
+                "69": 30,
+                "70": 60,
+                "71": 100,
+                "72": 60,
+                "73": 30,
+                "74": 30,
+                "75": 30,
+                "77": 60,
+                "79": 30,
+                "80": 30,
+                "81": 30,
+                "82": 30,
+                "84": 0,
+                "85": 30,
+                "86": 100,
+                "87": 30,
+                "88": 30,
+                "90": 30,
+                "91": 0,
+                "93": 30,
+                "94": 0,
+                "95": 30,
+                "96": 30,
+                "01": 60,
+                "06": 60,
+                "08": 60
+              },
+              "default_score": 0,
+              "empty_score": 0
+            }
+          },
+          "name": "ОКВЭД"
+        },
+        {
+          "id": "tax_regime",
+          "weight": 0.2,
+          "scoring_method": {
+            "type": "tax_mapping",
+            "params": {
+              "mapping": {
+                "ОСН": 100,
+                "УСН": 50,
+                "ЕСХН": 40
+              },
+              "default_score": 0,
+              "empty_score": 0
+            }
+          },
+          "name": "Налоговый режим"
+        }
+      ]
+    },
+    {
+      "id": "D",
+      "name": "Доступность контакта",
+      "weight": 0.01,
+      "stop_factors": [
+        {
+          "type": "missing_all",
+          "features": [
+            "phone",
+            "email"
+          ]
+        }
+      ],
+      "features": [
+        {
+          "id": "phone",
+          "weight": 0.25,
+          "scoring_method": {
+            "type": "binary_presence",
+            "params": {
+              "present": 100,
+              "absent": 0
+            }
+          },
+          "name": "Телефоны"
+        },
+        {
+          "id": "email",
+          "weight": 0.25,
+          "scoring_method": {
+            "type": "binary_presence",
+            "params": {
+              "present": 100,
+              "absent": 0
+            }
+          },
+          "name": "Email"
+        },
+        {
+          "id": "website",
+          "weight": 0.2,
+          "scoring_method": {
+            "type": "binary_presence",
+            "params": {
+              "present": 100,
+              "absent": 0
+            }
+          },
+          "name": "Web-сайты"
+        },
+        {
+          "id": "address",
+          "weight": 0.15,
+          "scoring_method": {
+            "type": "binary_presence",
+            "params": {
+              "present": 100,
+              "absent": 0
+            }
+          },
+          "name": "Адрес"
+        },
+        {
+          "id": "manager",
+          "weight": 0.1,
+          "scoring_method": {
+            "type": "binary_presence",
+            "params": {
+              "present": 100,
+              "absent": 0
+            }
+          },
+          "name": "Руководитель"
+        },
+        {
+          "id": "position",
+          "weight": 0.05,
+          "scoring_method": {
+            "type": "binary_presence",
+            "params": {
+              "present": 100,
+              "absent": 0
+            }
+          },
+          "name": "Должность"
+        }
+      ],
+      "category_modifiers": [
+        {
+          "type": "zero_if_missing_all",
+          "features": [
+            "phone",
+            "website",
+            "address",
+            "email"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "E",
+      "name": "Юридический статус и риски",
+      "weight": 0.01,
+      "stop_factors": [
+        {
+          "type": "present",
+          "feature": "liquidation"
+        }
+      ],
+      "features": [
+        {
+          "id": "liquidation",
+          "weight": 0.4,
+          "scoring_method": {
+            "type": "binary_presence",
+            "params": {
+              "present": 0,
+              "absent": 100
+            }
+          },
+          "name": "Ликвидация"
+        },
+        {
+          "id": "okfs",
+          "weight": 0.3,
+          "scoring_method": {
+            "type": "categorical_mapping",
+            "params": {
+              "mapping": {
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 30,
+                "16": 100,
+                "17": 60,
+                "18": 100,
+                "19": 100,
+                "20": 30,
+                "21": 0,
+                "22": 30,
+                "23": 60,
+                "24": 60,
+                "27": 60,
+                "30": 60,
+                "31": 30,
+                "32": 30,
+                "33": 30,
+                "34": 60,
+                "35": 30,
+                "40": 30,
+                "41": 30,
+                "42": 30,
+                "43": 30,
+                "49": 60,
+                "50": 30,
+                "51": 0,
+                "52": 30,
+                "53": 30,
+                "54": 0,
+                "61": 0
+              },
+              "default_score": 50,
+              "empty_score": 50
+            }
+          },
+          "name": "ОКФС"
+        },
+        {
+          "id": "okopf",
+          "weight": 0.2,
+          "scoring_method": {
+            "type": "categorical_mapping",
+            "params": {
+              "mapping": {
+                "10000": 100,
+                "11000": 60,
+                "11051": 60,
+                "11064": 60,
+                "12000": 100,
+                "12200": 100,
+                "12247": 100,
+                "12267": 100,
+                "12300": 100,
+                "13000": 100,
+                "14000": 60,
+                "14100": 60,
+                "14153": 60,
+                "14154": 60,
+                "14155": 60,
+                "14200": 60,
+                "15300": 100,
+                "19000": 100,
+                "20000": 30,
+                "20100": 30,
+                "20101": 30,
+                "20102": 30,
+                "20103": 30,
+                "20104": 30,
+                "20105": 30,
+                "20106": 30,
+                "20107": 30,
+                "20108": 30,
+                "20109": 30,
+                "20110": 30,
+                "20111": 30,
+                "20112": 30,
+                "20115": 30,
+                "20116": 30,
+                "20121": 30,
+                "20200": 0,
+                "20201": 0,
+                "20202": 0,
+                "20210": 0,
+                "20211": 0,
+                "20217": 0,
+                "20600": 30,
+                "20601": 30,
+                "20603": 30,
+                "20604": 30,
+                "20605": 30,
+                "20606": 30,
+                "20607": 30,
+                "20608": 30,
+                "20609": 30,
+                "20610": 30,
+                "20611": 30,
+                "20612": 30,
+                "20613": 30,
+                "20614": 30,
+                "20615": 60,
+                "20616": 60,
+                "20619": 30,
+                "20620": 30,
+                "20700": 30,
+                "20702": 30,
+                "20716": 30,
+                "21100": 0,
+                "21200": 0,
+                "30000": 0,
+                "30001": 0,
+                "30002": 0,
+                "30003": 0,
+                "30004": 0,
+                "30005": 0,
+                "30006": 0,
+                "30008": 0,
+                "40000": 0,
+                "40001": 0,
+                "40002": 0,
+                "50000": 60,
+                "50100": 0,
+                "50101": 60,
+                "50102": 100,
+                "50200": 0,
+                "50201": 60,
+                "50202": 60,
+                "60000": 60,
+                "65000": 60,
+                "65100": 60,
+                "65141": 0,
+                "65142": 0,
+                "65143": 0,
+                "65200": 60,
+                "65241": 60,
+                "65242": 60,
+                "65243": 60,
+                "70000": 0,
+                "70400": 0,
+                "70402": 0,
+                "70404": 0,
+                "70405": 0,
+                "70410": 0,
+                "70411": 0,
+                "70412": 0,
+                "71601": 0,
+                "71602": 0,
+                "71610": 0,
+                "75000": 0,
+                "75100": 0,
+                "75101": 0,
+                "75103": 0,
+                "75104": 0,
+                "75105": 0,
+                "75200": 0,
+                "75201": 0,
+                "75203": 0,
+                "75204": 0,
+                "75300": 0,
+                "75400": 0,
+                "75401": 0,
+                "75403": 0,
+                "75404": 0,
+                "75500": 0,
+                "75502": 0,
+                "75505": 0
+              },
+              "default_score": 50,
+              "empty_score": 50
+            }
+          },
+          "name": "ОКОПФ"
+        },
+        {
+          "id": "inn_manager",
+          "weight": 0.1,
+          "scoring_method": {
+            "type": "binary_presence",
+            "params": {
+              "present": 100,
+              "absent": 50
+            }
+          },
+          "name": "ИНН руководителя"
+        }
+      ]
+    }
+  ]
+}

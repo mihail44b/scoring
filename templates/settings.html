@@ -6,125 +6,328 @@
     <title>Настройки Скоринга</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/theme.css">
     <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        [data-theme='light'] {
+            --glass-bg: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(0, 0, 0, 0.05);
+            --panel-bg: #f8fafc;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            overflow: hidden;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 32px;
+            background: var(--panel-bg);
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            z-index: 10;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--primary-gradient);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 18px;
+            box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+        }
+
+        .logo-title {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .nav-btn, .theme-toggle-btn {
+            background: var(--glass-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-btn:hover, .theme-toggle-btn:hover {
+            background: var(--bg-color);
+            transform: translateY(-1px);
+        }
+
+        .preset-selector-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--glass-bg);
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--glass-border);
+        }
+
+        .preset-select {
+            background: transparent;
+            color: var(--text-primary);
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            outline: none;
+            cursor: pointer;
+        }
+        
+        .preset-select option {
+            background: var(--panel-bg);
+            color: var(--text-primary);
+        }
+
         .settings-container {
             display: flex;
             flex: 1;
             overflow: hidden;
         }
+
         .sidebar {
-            width: 340px;
-            background-color: var(--panel-bg);
+            width: 320px;
+            background: var(--panel-bg);
             border-right: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
-            padding: 20px 0;
+            padding: 24px 16px;
             overflow-y: auto;
+            gap: 8px;
         }
-        .file-item {
-            padding: 16px 24px;
+
+        .tab-item {
+            padding: 14px 20px;
+            border-radius: 12px;
             cursor: pointer;
-            border-left: 4px solid transparent;
             display: flex;
-            flex-direction: column;
-            gap: 4px;
+            align-items: center;
+            gap: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
         }
-        .file-item:hover {
-            background-color: var(--bg-color);
-        }
-        .file-item.active {
-            background-color: var(--bg-color);
-            border-left-color: var(--primary-light);
-        }
-        .file-name {
-            font-weight: 600;
+
+        .tab-item:hover {
+            background: var(--glass-bg);
             color: var(--text-primary);
         }
-        .file-desc {
-            font-size: 13px;
-            color: var(--text-secondary);
+
+        .tab-item.active {
+            background: var(--primary-gradient);
+            color: white;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+            border-color: rgba(255,255,255,0.1);
         }
+
         .content-area {
             flex: 1;
             padding: 40px;
             overflow-y: auto;
             background-color: var(--bg-color);
+            position: relative;
         }
+
         .settings-card {
-            background-color: var(--panel-bg);
-            border-radius: var(--radius-lg);
+            background: var(--panel-bg);
+            border-radius: 16px;
             border: 1px solid var(--border-color);
-            box-shadow: var(--shadow-sm);
-            padding: 30px;
-            max-width: 800px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05);
+            padding: 40px;
+            max-width: 900px;
             margin: 0 auto;
+            animation: fadeIn 0.4s ease forwards;
         }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         .card-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid var(--border-color);
-            padding-bottom: 20px;
-            margin-bottom: 30px;
+            padding-bottom: 24px;
+            margin-bottom: 32px;
         }
+
         .card-title {
-            font-size: 24px;
+            font-size: 28px;
             font-weight: 700;
+            margin: 0;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
+
         .btn-save {
-            background-color: var(--primary);
+            background: var(--primary-gradient);
             color: white;
             border: none;
-            padding: 12px 24px;
-            border-radius: var(--radius-sm);
+            padding: 12px 28px;
+            border-radius: 10px;
             font-weight: 600;
+            font-size: 14px;
             cursor: pointer;
-            box-shadow: 0 4px 14px rgba(30, 58, 138, 0.2);
-        }
-        .btn-save:hover {
-            background-color: var(--primary-light);
-            transform: translateY(-1px);
-        }
-        .form-group {
-            margin-bottom: 16px;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+            transition: all 0.2s ease;
             display: flex;
-            flex-direction: column;
-            gap: 12px;
-            margin-left: 16px;
-            border-left: 2px solid var(--border-color);
-            padding-left: 24px;
+            align-items: center;
+            gap: 8px;
         }
+
+        .btn-save:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        /* Forms Styling */
+        .form-section {
+            background: var(--glass-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::before {
+            content: '';
+            display: block;
+            width: 4px;
+            height: 16px;
+            background: var(--primary-gradient);
+            border-radius: 4px;
+        }
+
         .form-row {
             display: flex;
             align-items: center;
-            gap: 16px;
+            margin-bottom: 16px;
+            gap: 20px;
         }
+        
+        .form-row:last-child {
+            margin-bottom: 0;
+        }
+
         .form-label {
             font-size: 14px;
             font-weight: 500;
             color: var(--text-secondary);
-            width: 280px;
+            width: 250px;
             flex-shrink: 0;
         }
+
         .form-input {
             flex: 1;
-            max-width: 250px;
-            padding: 8px 12px;
+            padding: 10px 14px;
             border: 1px solid var(--border-color);
-            border-radius: var(--radius-sm);
+            border-radius: 8px;
             background-color: var(--bg-color);
             color: var(--text-primary);
             font-size: 14px;
-            font-weight: 500;
+            transition: all 0.2s;
         }
+
         .form-input:focus {
             outline: none;
-            border-color: var(--primary-light);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+
+        .code-input {
+            font-family: 'Courier New', Courier, monospace;
+            width: 100%;
+            min-height: 200px;
+            resize: vertical;
         }
         
+        #json-editor {
+            display: none;
+        }
+
+        .feature-card {
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: var(--primary-gradient);
+        }
+
+        .feature-header {
+            font-weight: 600;
+            font-size: 15px;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+
         /* Убираем стрелочки у input type="number" */
         input[type="number"]::-webkit-inner-spin-button, 
         input[type="number"]::-webkit-outer-spin-button { 
@@ -134,46 +337,56 @@
         input[type="number"] {
             -moz-appearance: textfield;
         }
-
-        .section-title {
-            font-size: 17px;
-            font-weight: 700;
-            color: var(--text-secondary);
-            margin: 32px 0 16px 0;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
     </style>
 </head>
 <body>
     <header>
         <div class="logo-section">
             <div class="logo-icon">C</div>
-            <div class="logo-title">Скоринг ДП — Настройки</div>
+            <div class="logo-title">Скоринг ДП — Конфигуратор</div>
         </div>
+        
+        <div class="preset-selector-wrapper">
+            <span style="font-size: 13px; color: var(--text-secondary);">Текущий пресет:</span>
+            <select class="preset-select" id="preset-selector" onchange="changePreset()">
+                <!-- Опции загружаются динамически -->
+            </select>
+        </div>
+
         <div class="header-actions">
-            <span id="save-status" style="font-size: 14px; font-weight: 600; display: none; margin-right: 20px;"></span>
+            <span id="save-status" style="font-size: 14px; font-weight: 600; display: none; color: #10b981;"></span>
             <a href="/" class="nav-btn">← К скорингу</a>
             <button class="theme-toggle-btn" onclick="toggleTheme()" id="themeToggleBtn">
-                🌙 Тёмная тема
+                🌙
             </button>
         </div>
     </header>
 
     <div class="settings-container">
-        <aside class="sidebar">
-            <div style="padding: 0 24px 16px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; font-size: 13px;">Файлы логики</div>
-            <div id="file-list"></div>
+        <aside class="sidebar" id="tab-list">
+            <!-- Вкладки рендерятся скриптом -->
         </aside>
 
         <main class="content-area">
-            <div class="settings-card">
+            <div class="settings-card" id="settings-card">
                 <div class="card-header">
-                    <h2 class="card-title" id="current-title">Загрузка...</h2>
-                    <button class="btn-save" onclick="saveConfig()">Сохранить изменения</button>
+                    <h2 class="card-title" id="current-tab-title">Загрузка...</h2>
+                    <button class="btn-save" onclick="saveCurrentPreset()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                        Сохранить пресет
+                    </button>
                 </div>
+                
                 <div id="form-container">
                     <!-- Форма рендерится скриптом -->
+                </div>
+                
+                <div id="json-editor">
+                    <div class="section-title">Raw JSON (Для продвинутого редактирования)</div>
+                    <textarea class="form-input code-input" id="raw-json-textarea"></textarea>
+                    <div style="margin-top: 12px; display: flex; justify-content: flex-end;">
+                        <button class="nav-btn" onclick="applyRawJson()">Применить JSON</button>
+                    </div>
                 </div>
             </div>
         </main>
