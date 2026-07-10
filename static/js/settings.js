@@ -180,29 +180,7 @@ function renderGeneralSettings(container) {
         currentPresetData.id_columns = val.split(",").map(s => s.trim()).filter(s => s);
     }));
 
-    // Regional Coefficients
-    container.appendChild(createSection("Региональные коэффициенты"));
-    const rc = currentPresetData.regional_coefficients || { keywords: [], rules: {} };
-    container.appendChild(createInputRow("Ключевые слова адреса", (rc.keywords || []).join(", "), (val) => {
-        rc.keywords = val.split(",").map(s => s.trim()).filter(s => s);
-    }));
-    
-    // Simple dict editor for regional rules
-    const regRulesContainer = document.createElement("div");
-    regRulesContainer.style.marginLeft = "16px";
-    regRulesContainer.style.marginBottom = "16px";
-    
-    const regRulesTitle = document.createElement("div");
-    regRulesTitle.textContent = "Правила (Регион -> Множитель порога):";
-    regRulesTitle.style.fontSize = "13px";
-    regRulesTitle.style.fontWeight = "600";
-    regRulesTitle.style.marginBottom = "8px";
-    regRulesContainer.appendChild(regRulesTitle);
-    
-    renderDictionaryEditor(regRulesContainer, rc.rules, (newRules) => {
-        rc.rules = newRules;
-    });
-    container.appendChild(regRulesContainer);
+
 
     // Segments
     container.appendChild(createSection("Сегментация"));
@@ -245,14 +223,34 @@ function renderGeneralSettings(container) {
 
 function renderCategorySettings(container, category, catIndex) {
     // Основные настройки категории
-    const catHeader = document.createElement("div");
-    catHeader.style.fontSize = "14px";
-    catHeader.style.color = "var(--text-secondary)";
-    catHeader.style.marginBottom = "12px";
-    catHeader.textContent = `Системный ID категории: ${category.id}`;
-    container.appendChild(catHeader);
-    
+    container.appendChild(createInputRow("Slug", category.id, (val) => category.id = val));
     container.appendChild(createInputRow("Название", category.name, (val) => category.name = val));
+
+    if (category.id === "A" || category.name === "Фин. здоровье") {
+        container.appendChild(createSection("Региональные коэффициенты"));
+        const rc = currentPresetData.regional_coefficients || { keywords: [], rules: {} };
+        if (!currentPresetData.regional_coefficients) currentPresetData.regional_coefficients = rc;
+
+        container.appendChild(createInputRow("Ключевые слова адреса", (rc.keywords || []).join(", "), (val) => {
+            rc.keywords = val.split(",").map(s => s.trim()).filter(s => s);
+        }));
+        
+        const regRulesContainer = document.createElement("div");
+        regRulesContainer.style.marginLeft = "16px";
+        regRulesContainer.style.marginBottom = "16px";
+        
+        const regRulesTitle = document.createElement("div");
+        regRulesTitle.textContent = "Правила (Регион -> Множитель порога):";
+        regRulesTitle.style.fontSize = "13px";
+        regRulesTitle.style.fontWeight = "600";
+        regRulesTitle.style.marginBottom = "8px";
+        regRulesContainer.appendChild(regRulesTitle);
+        
+        renderDictionaryEditor(regRulesContainer, rc.rules, (newRules) => {
+            rc.rules = newRules;
+        });
+        container.appendChild(regRulesContainer);
+    }
 
     // Веса признаков в самом верху
     if (category.features) {
@@ -272,13 +270,14 @@ function renderCategorySettings(container, category, catIndex) {
 
         const header = document.createElement("div");
         header.className = "feature-header";
-        header.innerHTML = `Признак: ${feat.name || feat.id} <span style="font-size: 12px; color: var(--text-secondary); font-weight: 400; margin-left: 8px;">(id: ${feat.id})</span>`;
+        header.textContent = `Признак: ${feat.name || feat.id}`;
         card.appendChild(header);
 
         card.appendChild(createInputRow("Название", feat.name || "", (val) => {
             feat.name = val;
-            header.innerHTML = `Признак: ${val} <span style="font-size: 12px; color: var(--text-secondary); font-weight: 400; margin-left: 8px;">(id: ${feat.id})</span>`;
+            header.textContent = `Признак: ${val}`;
         }));
+        card.appendChild(createInputRow("Slug", feat.id, (val) => feat.id = val));
         
         // ВЕС УБРАН ИЗ КАРТОЧКИ, так как он редактируется в верхнем блоке
 
