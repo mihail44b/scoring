@@ -9,9 +9,8 @@
   - Кол-во сотрудников: логарифмический балл
   - Запасы (2025): логарифмический балл
 
-Стоп-фактор: если "Кол-во сотрудников" или "Запасы" = 0 (заполнено нулём,
-не пусто) → B_score = 0. Пустая ячейка НЕ является стоп-фактором — она
-просто даёт 0 баллов по своему признаку.
+Стоп-факторы: в категории B стоп-факторы отсутствуют.
+Пустая ячейка даёт 0 баллов по соответствующему признаку.
 
 Веса из Excel:
   Регистрация = 0.30, РМСП = 0.30, Сотрудники = 0.25, Запасы = 0.15
@@ -110,7 +109,7 @@ def score_category_b(df: pd.DataFrame) -> pd.DataFrame:
     Выход: тот же df + новые колонки:
       B_score          — балл категории (0-100)
       B_completeness   — полнота данных категории (0-100%)
-      B_stop_factor    — 1 если данные достаточны, 0 если стоп
+      B_stop_factor    — всегда 1 (стоп-факторы в категории B отсутствуют)
     """
     result = df.copy()
 
@@ -162,16 +161,8 @@ def score_category_b(df: pd.DataFrame) -> pd.DataFrame:
         score_res = pd.Series(0.0, index=result.index)
         reserves = pd.Series(np.nan, index=result.index)
 
-    # Стоп-фактор
-    # Срабатывает, только если ячейка ЗАПОЛНЕНА и содержит именно 0.
-    # Пустая ячейка (NaN) стоп-фактор не вызывает — она просто даёт 0 баллов
-    is_zero_emp = (employees == 0)
-    is_zero_res = (reserves == 0)
-
-    stop_factor = np.where(
-        is_zero_emp | is_zero_res,
-        0, 1
-    )
+    # Стоп-факторы в категории B отсутствуют
+    stop_factor = 1
 
     # Итоговый балл
     total = np.round(
@@ -181,7 +172,6 @@ def score_category_b(df: pd.DataFrame) -> pd.DataFrame:
         + score_res * WEIGHTS["reserves"],
         2
     )
-    total = total * stop_factor
 
     # Полнота 
     reg_ok = reg_dates.notna().astype(int)
