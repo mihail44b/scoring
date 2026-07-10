@@ -1,127 +1,198 @@
+/* ============================================================
+   Скоринг ДП — дизайн-система
+   Строгий, плотный, "финтех"-стиль: холодный синий/графит,
+   табличные цифры, минимум декора, максимум читаемости.
+   ============================================================ */
+
 :root {
-    --bg-color: #f4f6fa;
+    /* Поверхности */
+    --bg-color: #eef1f6;
     --panel-bg: #ffffff;
-    --text-primary: #1e293b;
-    --text-secondary: #64748b;
-    --border-color: #e2e8f0;
+    --panel-bg-soft: #f7f8fb;
+    --panel-bg-raised: #ffffff;
 
-    --primary: #1e3a8a;
-    --primary-light: #3b82f6;
-    --accent: #6366f1;
+    /* Текст */
+    --text-primary: #10182b;
+    --text-secondary: #5b6479;
+    --text-tertiary: #8b93a7;
 
-    --color-hot: #ef4444;
-    --color-warm: #f59e0b;
-    --color-cold: #10b981;
+    /* Границы */
+    --border-color: #e1e5ee;
+    --border-color-strong: #cbd2e1;
 
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.02);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.01);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.01);
+    /* Бренд / акценты */
+    --primary: #1b2e4b;
+    --primary-light: #2f6fb0;
+    --accent: #2a4d8f;
+    --accent-soft: rgba(42, 77, 143, 0.10);
+
+    /* Температурная шкала лидов */
+    --color-hot: #c23b2d;
+    --color-hot-soft: rgba(194, 59, 45, 0.10);
+    --color-warm: #b8790f;
+    --color-warm-soft: rgba(184, 121, 15, 0.10);
+    --color-cold: #2f6fb0;
+    --color-cold-soft: rgba(47, 111, 176, 0.10);
+
+    /* Статусы */
+    --status-ok: #1a7f4f;
+    --status-ok-soft: rgba(26, 127, 79, 0.10);
+    --status-warn: #b8790f;
+    --status-warn-soft: rgba(184, 121, 15, 0.10);
+    --status-danger: #c23b2d;
+    --status-danger-soft: rgba(194, 59, 45, 0.10);
+    --status-neutral: #5b6479;
+    --status-neutral-soft: rgba(91, 100, 121, 0.08);
+
+    --shadow-sm: 0 1px 2px rgba(16, 24, 43, 0.06);
+    --shadow-md: 0 4px 12px rgba(16, 24, 43, 0.07);
+    --shadow-lg: 0 12px 32px rgba(16, 24, 43, 0.10);
 
     --radius-sm: 6px;
     --radius-md: 10px;
-    --radius-lg: 16px;
+    --radius-lg: 14px;
+
+    --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
 }
 
 [data-theme="dark"] {
-    --bg-color: #0f172a;
-    --panel-bg: #1e293b;
-    --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
-    --border-color: #334155;
+    --bg-color: #0b1220;
+    --panel-bg: #131c2e;
+    --panel-bg-soft: #16213570;
+    --panel-bg-raised: #17233a;
 
-    --primary: #3b82f6;
-    --primary-light: #60a5fa;
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+    --text-primary: #eef1f8;
+    --text-secondary: #9aa4bd;
+    --text-tertiary: #6b7690;
+
+    --border-color: #263248;
+    --border-color-strong: #34435f;
+
+    --primary: #6f9fd8;
+    --primary-light: #6f9fd8;
+    --accent: #5e8fd6;
+    --accent-soft: rgba(94, 143, 214, 0.14);
+
+    --color-hot: #e5675a;
+    --color-hot-soft: rgba(229, 103, 90, 0.14);
+    --color-warm: #d99a3d;
+    --color-warm-soft: rgba(217, 154, 61, 0.14);
+    --color-cold: #5e9bd6;
+    --color-cold-soft: rgba(94, 155, 214, 0.14);
+
+    --status-ok: #3fae7d;
+    --status-ok-soft: rgba(63, 174, 125, 0.14);
+    --status-warn: #d99a3d;
+    --status-warn-soft: rgba(217, 154, 61, 0.14);
+    --status-danger: #e5675a;
+    --status-danger-soft: rgba(229, 103, 90, 0.14);
+    --status-neutral: #9aa4bd;
+    --status-neutral-soft: rgba(154, 164, 189, 0.10);
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 16px 36px rgba(0, 0, 0, 0.45);
 }
 
 * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    transition: background-color 0.25s ease, border-color 0.25s ease;
 }
 
 body {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-ui);
     background-color: var(--bg-color);
     color: var(--text-primary);
     min-height: 100vh;
     display: flex;
     flex-direction: column;
     overflow-x: hidden;
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
 }
 
-a {
-    color: var(--primary-light);
-    text-decoration: none;
+body, body * {
+    transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
 }
 
-/* Общий Header */
+a { color: var(--accent); text-decoration: none; }
+
+.mono, .tabular { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+::selection { background: var(--accent-soft); }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-color-strong); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
+
+/* ─── Header (общий для всех страниц) ────────────────────────────────── */
+
 header {
     background-color: var(--panel-bg);
     border-bottom: 1px solid var(--border-color);
-    padding: 16px 32px;
+    padding: 14px 28px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     position: sticky;
     top: 0;
     z-index: 100;
-    box-shadow: var(--shadow-sm);
 }
 
-.logo-section {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
+.logo-section { display: flex; align-items: center; gap: 12px; }
 
 .logo-icon {
-    background: linear-gradient(135deg, var(--primary), var(--accent));
-    color: white;
-    width: 38px;
-    height: 38px;
-    border-radius: var(--radius-md);
+    background: var(--primary);
+    color: #fff;
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius-sm);
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 700;
-    font-size: 18px;
-    box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
+    font-size: 15px;
+    font-family: var(--font-mono);
+    letter-spacing: -0.5px;
 }
 
 .logo-title {
     font-weight: 700;
-    font-size: 19px;
-    letter-spacing: -0.5px;
-    background: linear-gradient(to right, var(--text-primary), var(--primary-light));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    font-size: 15px;
+    letter-spacing: -0.2px;
+    color: var(--text-primary);
+    line-height: 1.2;
 }
 
-.header-actions {
-    display: flex;
-    align-items: center;
-    gap: 16px;
+.logo-subtitle {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    font-weight: 500;
+    letter-spacing: 0.2px;
 }
+
+.header-actions { display: flex; align-items: center; gap: 10px; }
 
 .theme-toggle-btn, .nav-btn {
-    background: none;
+    background: var(--panel-bg-soft);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
-    padding: 8px 14px;
+    padding: 7px 13px;
     border-radius: var(--radius-sm);
     cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
+    font-size: 12.5px;
+    font-weight: 600;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     text-decoration: none;
+    font-family: var(--font-ui);
 }
 
 .theme-toggle-btn:hover, .nav-btn:hover {
     background-color: var(--border-color);
+    border-color: var(--border-color-strong);
 }

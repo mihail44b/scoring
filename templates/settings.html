@@ -6,19 +6,18 @@
     <title>Настройки Скоринга</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/theme.css">
     <style>
         :root {
-            --primary-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            --glass-bg: rgba(255, 255, 255, 0.05);
-            --glass-border: rgba(255, 255, 255, 0.1);
+            --primary-gradient: linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%);
+            --glass-bg: rgba(16, 24, 43, 0.03);
+            --glass-border: rgba(16, 24, 43, 0.08);
         }
 
-        [data-theme='light'] {
-            --glass-bg: rgba(255, 255, 255, 0.7);
-            --glass-border: rgba(0, 0, 0, 0.05);
-            --panel-bg: #f8fafc;
+        [data-theme='dark'] {
+            --glass-bg: rgba(255, 255, 255, 0.04);
+            --glass-border: rgba(255, 255, 255, 0.08);
         }
 
         body {
@@ -342,23 +341,24 @@
 <body>
     <header>
         <div class="logo-section">
-            <div class="logo-icon">C</div>
-            <div class="logo-title">Скоринг ДП — Конфигуратор</div>
+            <div class="logo-icon">СК</div>
+            <div>
+                <div class="logo-title" style="background:none; -webkit-text-fill-color:var(--text-primary); font-size:15px;">Скоринг ДП</div>
+                <div style="font-size:11px; color:var(--text-tertiary); font-weight:500;">Конфигуратор весов и порогов</div>
+            </div>
         </div>
         
         <div class="preset-selector-wrapper">
-            <span style="font-size: 13px; color: var(--text-secondary);">Текущий пресет:</span>
+            <span style="font-size: 12.5px; color: var(--text-secondary); font-weight:600;">Пресет:</span>
             <select class="preset-select" id="preset-selector" onchange="changePreset()">
                 <!-- Опции загружаются динамически -->
             </select>
         </div>
 
         <div class="header-actions">
-            <span id="save-status" style="font-size: 14px; font-weight: 600; display: none; color: #10b981;"></span>
-            <a href="/" class="nav-btn">← К скорингу</a>
-            <button class="theme-toggle-btn" onclick="toggleTheme()" id="themeToggleBtn">
-                🌙
-            </button>
+            <span id="save-status" style="font-size: 13px; font-weight: 700; display: none; color: var(--status-ok);"></span>
+            <a href="/" class="nav-btn">← К дашборду</a>
+            <button class="theme-toggle-btn" onclick="toggleTheme()" id="themeToggleBtn">Тема</button>
         </div>
     </header>
 
