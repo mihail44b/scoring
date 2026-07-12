@@ -339,6 +339,7 @@ def calculate_scoring(df: pd.DataFrame, preset: dict) -> pd.DataFrame:
     # Enrichment priority and entropy
     enrich_w = preset.get("enrichment_weights", {"score_weight": 0.6, "entropy_weight": 0.4})
     overall_comp = sum(overall_completeness_parts) if overall_completeness_parts else pd.Series(100.0, index=result.index)
+    result["scoring_completeness"] = np.round(overall_comp, 1)
     entropy = 100.0 - overall_comp
     result["scoring_entropy"] = np.round(entropy, 1)
     
