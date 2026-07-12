@@ -63,6 +63,13 @@ async function handleFileUpload(event) {
             const fileDisplay = document.getElementById('file-name-display');
             fileDisplay.innerText = `Файл: ${file.name}`;
             fileDisplay.style.display = 'inline';
+            document.getElementById('resetSessionBtn').style.display = 'inline-flex';
+
+            // Сохраняем в сессию
+            try {
+                sessionStorage.setItem('dashboardData', JSON.stringify(data));
+                sessionStorage.setItem('fileName', file.name);
+            } catch(e) { console.warn('Не удалось сохранить данные в session storage (возможно файл слишком большой)'); }
 
             populateRegionFilterOptions();
             renderDashboard();
@@ -85,6 +92,45 @@ function renderDashboard() {
     renderRegionList();
     applyFilters();
 }
+
+function resetSession() {
+    sessionStorage.removeItem('dashboardData');
+    sessionStorage.removeItem('fileName');
+    dashboardData = null;
+    originalFile = null;
+    
+    document.getElementById('upload-panel').style.display = 'flex';
+    document.getElementById('dashboard').style.display = 'none';
+    document.getElementById('file-name-display').style.display = 'none';
+    document.getElementById('resetSessionBtn').style.display = 'none';
+    document.getElementById('excelFile').value = '';
+}
+
+// Восстановление сессии при перезагрузке
+document.addEventListener('DOMContentLoaded', () => {
+    const savedData = sessionStorage.getItem('dashboardData');
+    const savedName = sessionStorage.getItem('fileName');
+    if (savedData) {
+        try {
+            dashboardData = JSON.parse(savedData);
+            document.getElementById('upload-panel').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'flex';
+            
+            if (savedName) {
+                const fileDisplay = document.getElementById('file-name-display');
+                fileDisplay.innerText = `Файл: ${savedName}`;
+                fileDisplay.style.display = 'inline';
+            }
+            document.getElementById('resetSessionBtn').style.display = 'inline-flex';
+            
+            populateRegionFilterOptions();
+            renderDashboard();
+        } catch (e) {
+            console.error('Ошибка восстановления сессии', e);
+            sessionStorage.removeItem('dashboardData');
+        }
+    }
+});
 
 // ─── Сводная строка ────────────────────────────────────────────────────
 
