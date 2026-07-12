@@ -39,6 +39,13 @@ def build_result(df: pd.DataFrame, preset: dict, include_source: bool = True) ->
         diag_columns.append(f"{cat_id}_stop_factor")
         rename_map[f"{cat_id}_stop_factor"] = f"Стоп-фактор ({cat_id})"
         
+        for diag in cat.get("diagnostic_columns", []):
+            d_id = f"{cat_id}_{diag['id']}"
+            diag_columns.append(d_id)
+            diag_name = diag.get("name", diag["id"])
+            rename_map[d_id] = f"Диагностика ({cat_id}) {diag_name}"
+            
+        
     score_columns.extend(["scoring_total", "enrichment_priority", "scoring_segment"])
     diag_columns.append("scoring_entropy")
     diag_columns.append("_region_mult")

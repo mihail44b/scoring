@@ -404,6 +404,7 @@
       "diagnostic_columns": [
         {
           "id": "contact_status",
+          "name": "Статус контактов",
           "type": "contact_status",
           "features": ["phone", "email"],
           "values": {
