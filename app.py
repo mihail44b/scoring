@@ -347,6 +347,7 @@ async def score_full(file: UploadFile = File(...)):
         },
         "stats": {
             "total": total,
+            "segments_config": preset.get("segments", {}),
             "segments": segment_counts,
             "segment_avg_score": segment_avg,
             "averages": averages,

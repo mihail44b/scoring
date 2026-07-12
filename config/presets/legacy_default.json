@@ -14,7 +14,7 @@
       "label": "Тёплый"
     },
     "cold": {
-      "min_score": 0,
+      "min_score": 1,
       "label": "Холодный"
     }
   },
@@ -406,7 +406,10 @@
           "id": "contact_status",
           "name": "Статус контактов",
           "type": "contact_status",
-          "features": ["phone", "email"],
+          "features": [
+            "phone",
+            "email"
+          ],
           "values": {
             "both": "телефон и email",
             "phone_only": "только телефон",
@@ -639,7 +642,10 @@
           "id": "status",
           "name": "Статус ОКФС/ОКОПФ",
           "type": "categorical_unknown",
-          "features": ["okfs", "okopf"],
+          "features": [
+            "okfs",
+            "okopf"
+          ],
           "values": {
             "none": "OK"
           }

@@ -181,7 +181,7 @@ input[type="file"] {
     position: relative;
 }
 
-.segment-card.hot { --tone: var(--color-hot); }
+.segment-card.hot  { --tone: var(--color-hot); }
 .segment-card.warm { --tone: var(--color-warm); }
 .segment-card.cold { --tone: var(--color-cold); }
 

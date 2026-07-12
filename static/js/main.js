@@ -107,17 +107,33 @@ function populateSummary(stats) {
 
 function populateSegments(stats) {
     const total = stats.total || 1;
-    const segMap = { hot: 'Горячий', warm: 'Тёплый', cold: 'Холодный' };
+    const config = stats.segments_config || {};
 
-    Object.entries(segMap).forEach(([key, label]) => {
+    const hotConf  = config.hot  || { label: 'Горячий',  min_score: 70 };
+    const warmConf = config.warm || { label: 'Тёплый',   min_score: 40 };
+    const coldConf = config.cold || { label: 'Холодный', min_score: 30 };
+
+    // Диапазоны: для холодного отображаем строго от его min_score
+    const segDefs = [
+        { key: 'hot',  label: hotConf.label,   range: `балл ≥ ${hotConf.min_score}` },
+        { key: 'warm', label: warmConf.label,  range: `балл ${warmConf.min_score}–${hotConf.min_score - 1}` },
+        { key: 'cold', label: coldConf.label,  range: `балл ${coldConf.min_score}–${warmConf.min_score - 1}` },
+    ];
+
+    segDefs.forEach(({ key, label, range }) => {
         const count = stats.segments[label] || 0;
-        const share = Math.round((count / total) * 100);
-        const avg = stats.segment_avg_score ? (stats.segment_avg_score[label] || 0) : 0;
+        const share = total > 0 ? Math.round((count / total) * 100) : 0;
+        const avg   = (stats.segment_avg_score || {})[label] || 0;
 
-        document.getElementById(`seg-${key}-count`).innerText = count;
-        document.getElementById(`seg-${key}-share`).innerText = `${share}%`;
-        document.getElementById(`seg-${key}-bar`).style.width = `${share}%`;
-        document.getElementById(`seg-${key}-avg`).innerText = avg.toFixed(1);
+        const nameEl  = document.querySelector(`#seg-${key} .segment-name`);
+        const rangeEl = document.getElementById(`seg-${key}-range`);
+        if (nameEl)  nameEl.innerText  = label;
+        if (rangeEl) rangeEl.innerText = range;
+
+        document.getElementById(`seg-${key}-count`).innerText        = count;
+        document.getElementById(`seg-${key}-share`).innerText        = `${share}%`;
+        document.getElementById(`seg-${key}-bar`).style.width        = `${share}%`;
+        document.getElementById(`seg-${key}-avg`).innerText          = avg.toFixed(1);
     });
 }
 
@@ -135,12 +151,24 @@ function onSegmentSelectChange() {
 }
 
 function highlightActiveSegmentCard() {
-    const map = { 'Горячий': 'seg-hot', 'Тёплый': 'seg-warm', 'Холодный': 'seg-cold' };
-    ['seg-hot', 'seg-warm', 'seg-cold'].forEach(id => document.getElementById(id).classList.remove('active'));
-    if (filters.segment && map[filters.segment]) {
-        document.getElementById(map[filters.segment]).classList.add('active');
-    }
+    const config   = (dashboardData?.stats?.segments_config) || {};
+    const hotLabel  = (config.hot  || {}).label || 'Горячий';
+    const warmLabel = (config.warm || {}).label || 'Тёплый';
+    const coldLabel = (config.cold || {}).label || 'Холодный';
+
+    const labelToKey = {
+        [hotLabel]:  'seg-hot',
+        [warmLabel]: 'seg-warm',
+        [coldLabel]: 'seg-cold',
+    };
+
+    ['seg-hot', 'seg-warm', 'seg-cold'].forEach(id =>
+        document.getElementById(id)?.classList.remove('active')
+    );
+    const targetId = labelToKey[filters.segment];
+    if (targetId) document.getElementById(targetId)?.classList.add('active');
 }
+
 
 // ─── График средних баллов по категориям ───────────────────────────────
 

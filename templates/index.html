@@ -86,11 +86,11 @@
                 <span class="section-note">Нажмите на блок, чтобы отфильтровать реестр ниже</span>
             </div>
             <div class="segment-row">
-                <div class="segment-card hot" id="seg-hot" onclick="toggleSegmentFilter('Горячий')">
+                <div class="segment-card hot" id="seg-hot">
                     <div class="segment-card-top">
                         <div>
                             <div class="segment-name">Горячие</div>
-                            <div class="segment-range">балл ≥ 70</div>
+                            <div class="segment-range" id="seg-hot-range">балл ≥ 70</div>
                         </div>
                         <div class="segment-share" id="seg-hot-share">0%</div>
                     </div>
@@ -98,11 +98,11 @@
                     <div class="segment-bar-bg"><div class="segment-bar-fill" id="seg-hot-bar" style="width:0%;"></div></div>
                     <div class="segment-meta"><span>Средний балл</span><b id="seg-hot-avg">0.0</b></div>
                 </div>
-                <div class="segment-card warm" id="seg-warm" onclick="toggleSegmentFilter('Тёплый')">
+                <div class="segment-card warm" id="seg-warm">
                     <div class="segment-card-top">
                         <div>
                             <div class="segment-name">Тёплые</div>
-                            <div class="segment-range">балл 40–69</div>
+                            <div class="segment-range" id="seg-warm-range">балл 40–69</div>
                         </div>
                         <div class="segment-share" id="seg-warm-share">0%</div>
                     </div>
@@ -110,11 +110,11 @@
                     <div class="segment-bar-bg"><div class="segment-bar-fill" id="seg-warm-bar" style="width:0%;"></div></div>
                     <div class="segment-meta"><span>Средний балл</span><b id="seg-warm-avg">0.0</b></div>
                 </div>
-                <div class="segment-card cold" id="seg-cold" onclick="toggleSegmentFilter('Холодный')">
+                <div class="segment-card cold" id="seg-cold">
                     <div class="segment-card-top">
                         <div>
                             <div class="segment-name">Холодные</div>
-                            <div class="segment-range">балл &lt; 40</div>
+                            <div class="segment-range" id="seg-cold-range">балл &lt; 40</div>
                         </div>
                         <div class="segment-share" id="seg-cold-share">0%</div>
                     </div>

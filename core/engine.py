@@ -347,16 +347,15 @@ def calculate_scoring(df: pd.DataFrame, preset: dict) -> pd.DataFrame:
     
     # Segments
     segments = preset.get("segments", {})
-    # Default to cold if not matching
     # Convert dict to sorted list of dicts by min_score desc
     seg_list = sorted([{"label": v["label"], "min_score": v["min_score"]} for k, v in segments.items()], key=lambda x: x["min_score"], reverse=True)
-    
+
     def _assign_seg(score):
         for s in seg_list:
             if score >= s["min_score"]:
                 return s["label"]
-        return seg_list[-1]["label"] if seg_list else "Unknown"
-        
+        return None  # Лиды ниже границы холодных больше никуда не приплюсовываются
+
     result["scoring_segment"] = pd.Series(total).apply(_assign_seg)
     
     return result
