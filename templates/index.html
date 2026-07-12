@@ -4,14 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Скоринг Департамента Продаж | Аналитика</title>
-    <!-- Google Fonts: Inter -->
+    <title>Скоринг ДП | Аналитика базы контрагентов</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap font-display=swap"
-        rel="stylesheet">
-    <!-- Chart.js -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="/static/css/theme.css">
     <link rel="stylesheet" href="/static/css/main.css">
 </head>
 
@@ -19,280 +17,244 @@
 
     <header>
         <div class="logo-section">
-            <div class="logo-icon">C</div>
-            <div class="logo-title">Скоринг ДП</div>
+            <div class="logo-icon">СК</div>
+            <div class="logo-title-wrap">
+                <div class="logo-title">Скоринг ДП</div>
+                <div class="logo-subtitle">Аналитика базы контрагентов</div>
+            </div>
         </div>
         <div class="header-actions">
-            <span id="file-name-display" style="font-size: 14px; font-weight: 500; display: none;"></span>
-            <a href="/settings" class="theme-toggle-btn" style="text-decoration: none;">
-                ⚙️ Настройки
-            </a>
-            <button class="theme-toggle-btn" onclick="toggleTheme()" id="themeToggleBtn">
-                🌙 Тёмная тема
-            </button>
+            <span id="file-name-display" style="font-size: 12.5px; font-weight: 600; color: var(--text-secondary); display: none;"></span>
+            <a href="/settings" class="nav-btn">Настройки скоринга</a>
+            <button class="theme-toggle-btn" onclick="toggleTheme()" id="themeToggleBtn">Тёмная тема</button>
         </div>
     </header>
 
     <div class="workspace">
-        <!-- UPLOAD SECTION -->
+
+        <!-- ЗАГРУЗКА ФАЙЛА -->
         <div class="upload-card" id="upload-panel">
             <div class="progress-overlay" id="spinner-overlay">
                 <div class="spinner"></div>
-                <h3 style="font-weight: 600; color: var(--text-primary);">Идет расчет скоринга...</h3>
-                <p>Финансовая валидация, региональные коэффициенты, отраслевой анализ</p>
+                <h3 style="font-weight: 700; font-size: 14px;">Выполняется расчёт скоринга…</h3>
+                <p style="margin:6px 0 0; font-size:12.5px;">Финансовые пороги, региональные коэффициенты, отраслевая релевантность</p>
             </div>
-            <span class="upload-icon">📊</span>
-            <h1>Загрузите Excel-файл для анализа</h1>
+            <div class="upload-eyebrow">Excel · .xlsx / .xls</div>
+            <h1>Загрузите базу контрагентов</h1>
             <p>
-                Поддерживаются файлы скоринга с полями: Выручка, ОС, УК, ИНН, Адрес, ОКВЭД и др.<br>
-                Автоматически учитывает региональные особенности (Чувашия х3 порог) и перераспределяет веса при
-                отсутствии финансов.
+                Файл должен содержать поля: Выручка, ОС, УК, ИНН, Адрес, ОКВЭД, контакты.
+                Система автоматически определит регион, оценит качество данных
+                по каждой компании и применит региональные пороги.
             </p>
             <div class="file-select-area">
-                <div class="file-select-btn">
-                    Выбрать файл и Начать
-                </div>
+                <div class="file-select-btn">Выбрать файл и рассчитать</div>
                 <input type="file" id="excelFile" accept=".xlsx, .xls" onchange="handleFileUpload(event)">
             </div>
-            <div id="upload-status"
-                style="margin-top: 14px; font-size: 13px; font-weight: 600; color: var(--color-hot);"></div>
+            <div id="upload-status" style="margin-top: 12px; font-size: 12.5px; font-weight: 600; color: var(--status-danger);"></div>
         </div>
 
-        <!-- DASHBOARD SECTION -->
+        <!-- ДАШБОРД -->
         <div id="dashboard">
-            <!-- KPI CARDS -->
-            <div class="kpi-grid">
-                <div class="kpi-card">
-                    <div class="kpi-title">Всего контрагентов</div>
-                    <div class="kpi-value" id="kpi-total">0</div>
-                    <div class="kpi-subtitle">Размер обработанной базы</div>
-                </div>
-                <div class="kpi-card hot">
-                    <div class="kpi-title">Горячие Лиды</div>
-                    <div class="kpi-value" id="kpi-hot">0</div>
-                    <div class="kpi-subtitle">Готовы к быстрой продаже (>=70)</div>
-                </div>
-                <div class="kpi-card warm">
-                    <div class="kpi-title">Теплые / Холодные</div>
-                    <div class="kpi-value" id="kpi-warm-cold">0 / 0</div>
-                    <div class="kpi-subtitle">Требуется доработка отдела продаж</div>
-                </div>
-                <div class="kpi-card">
-                    <div class="kpi-title">Средний балл</div>
-                    <div class="kpi-value" id="kpi-avg">0.0</div>
-                    <div class="kpi-subtitle">Общий уровень лидов по базе</div>
-                </div>
 
+            <!-- Сводная строка -->
+            <div class="summary-strip">
+                <div class="summary-card">
+                    <div class="s-label">Всего контрагентов</div>
+                    <div class="s-value" id="kpi-total">0</div>
+                    <div class="s-sub">Размер обработанной базы</div>
+                </div>
+                <div class="summary-card">
+                    <div class="s-label">Средний балл по базе</div>
+                    <div class="s-value" id="kpi-avg">0.0</div>
+                    <div class="s-sub">Итоговый скоринг, 0–100</div>
+                </div>
+                <div class="summary-card">
+                    <div class="s-label">Стоп-факторы сработали</div>
+                    <div class="s-value" id="kpi-stops">0</div>
+                    <div class="s-sub" id="kpi-stops-sub">по категориям</div>
+                </div>
+                <div class="summary-card">
+                    <div class="s-label">Нужно обогащение данных</div>
+                    <div class="s-value" id="kpi-enrich">0</div>
+                    <div class="s-sub">Низкое/среднее качество данных, не отсеяны</div>
+                </div>
             </div>
 
-            <!-- ANALYTICS CHARTS -->
+            <!-- Температурные сегменты -->
+            <div class="section-heading">
+                <h2>Лиды по температуре</h2>
+                <span class="section-note">Нажмите на блок, чтобы отфильтровать реестр ниже</span>
+            </div>
+            <div class="segment-row">
+                <div class="segment-card hot" id="seg-hot" onclick="toggleSegmentFilter('Горячий')">
+                    <div class="segment-card-top">
+                        <div>
+                            <div class="segment-name">Горячие</div>
+                            <div class="segment-range">балл ≥ 70</div>
+                        </div>
+                        <div class="segment-share" id="seg-hot-share">0%</div>
+                    </div>
+                    <div class="segment-count" id="seg-hot-count">0</div>
+                    <div class="segment-bar-bg"><div class="segment-bar-fill" id="seg-hot-bar" style="width:0%;"></div></div>
+                    <div class="segment-meta"><span>Средний балл</span><b id="seg-hot-avg">0.0</b></div>
+                </div>
+                <div class="segment-card warm" id="seg-warm" onclick="toggleSegmentFilter('Тёплый')">
+                    <div class="segment-card-top">
+                        <div>
+                            <div class="segment-name">Тёплые</div>
+                            <div class="segment-range">балл 40–69</div>
+                        </div>
+                        <div class="segment-share" id="seg-warm-share">0%</div>
+                    </div>
+                    <div class="segment-count" id="seg-warm-count">0</div>
+                    <div class="segment-bar-bg"><div class="segment-bar-fill" id="seg-warm-bar" style="width:0%;"></div></div>
+                    <div class="segment-meta"><span>Средний балл</span><b id="seg-warm-avg">0.0</b></div>
+                </div>
+                <div class="segment-card cold" id="seg-cold" onclick="toggleSegmentFilter('Холодный')">
+                    <div class="segment-card-top">
+                        <div>
+                            <div class="segment-name">Холодные</div>
+                            <div class="segment-range">балл &lt; 40</div>
+                        </div>
+                        <div class="segment-share" id="seg-cold-share">0%</div>
+                    </div>
+                    <div class="segment-count" id="seg-cold-count">0</div>
+                    <div class="segment-bar-bg"><div class="segment-bar-fill" id="seg-cold-bar" style="width:0%;"></div></div>
+                    <div class="segment-meta"><span>Средний балл</span><b id="seg-cold-avg">0.0</b></div>
+                </div>
+            </div>
+
+            <!-- Аналитика: категории + регионы -->
             <div class="analytics-grid">
-                <!-- Bar Chart: Category Averages -->
                 <div class="chart-box">
                     <div class="chart-header">
-                        <h3>Средние скоринг-баллы по категориям</h3>
+                        <div>
+                            <h3>Средние баллы по категориям</h3>
+                            <div class="chart-hint">Метки — значение среднего балла (0–100)</div>
+                        </div>
+                        <div class="stopfactor-toggle" id="catStopToggle">
+                            <button class="active" data-mode="all" onclick="setCategoryMode('all')">Все компании</button>
+                            <button data-mode="without" onclick="setCategoryMode('without')">Без стоп-факторов</button>
+                            <button data-mode="only" onclick="setCategoryMode('only')">Только стоп-факторы</button>
+                        </div>
                     </div>
-                    <div class="chart-container">
-                        <canvas id="categoryChart"></canvas>
-                    </div>
+                    <div class="chart-container"><canvas id="categoryChart"></canvas></div>
                 </div>
-                <!-- Segment Donut Chart -->
+
                 <div class="chart-box">
                     <div class="chart-header">
-                        <h3>Конверсия базы по сегментам</h3>
+                        <div>
+                            <h3>Распределение по регионам</h3>
+                            <div class="chart-hint" id="regionsHint">— компаний определено</div>
+                        </div>
+                        <div class="region-controls">
+                            <label style="font-size:11px; color:var(--text-tertiary);">Топ</label>
+                            <input type="number" id="regionTopN" value="8" min="3" max="30" onchange="renderRegionList()">
+                            <select id="regionJumpSelect" onchange="jumpToRegion(this.value)">
+                                <option value="">Выбрать регион…</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="chart-container">
-                        <canvas id="segmentsChart"></canvas>
-                    </div>
+                    <div class="region-list" id="region-list"></div>
                 </div>
             </div>
 
-            <div class="kpi-grid" style="grid-template-columns: 1fr 1fr;">
-                <div class="kpi-card"
-                    style="flex-direction: row; align-items: center; justify-content: flex-start; gap: 20px;">
-                    <div style="font-size: 32px;">🦁</div>
-                    <div>
-                        <div class="kpi-title">Чувашская Республика</div>
-                        <div class="kpi-value" id="kpi-chuvash">0</div>
-                        <div class="kpi-subtitle">Компании с повышающим коэффициентом (порог / 3.0)</div>
-                    </div>
-                </div>
-                <div class="kpi-card"
-                    style="flex-direction: row; align-items: center; justify-content: flex-start; gap: 20px;">
-                    <div style="font-size: 32px;">🛑</div>
-                    <div>
-                        <div class="kpi-title">Сработали Стоп-Факторы</div>
-                        <div class="kpi-value" id="kpi-stops">0</div>
-                        <div class="kpi-subtitle">Из них по ОКВЭД: <span id="stop-c-count">0</span>, по Выручке: <span
-                                id="stop-a-count">0</span></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- LEADS LIST CARD -->
+            <!-- Реестр компаний -->
             <div class="list-card">
                 <div class="list-header">
-                    <h3>Детализированный реестр компаний</h3>
+                    <div class="list-header-top">
+                        <h3>Детализированный реестр компаний</h3>
+                        <span class="result-count" id="resultCount">0 записей</span>
+                    </div>
                     <div class="list-actions">
-                        <input type="text" id="searchInput" class="search-input"
-                            placeholder="Поиск по ИНН или Названию..." oninput="applyFilters()">
-                        <select id="segmentFilter" class="filter-select" onchange="applyFilters()">
+                        <input type="text" id="searchInput" class="search-input" placeholder="Поиск по ИНН или названию…" oninput="applyFilters()">
+                        <select id="segmentFilter" class="filter-select" onchange="onSegmentSelectChange()">
                             <option value="">Все сегменты</option>
                             <option value="Горячий">Горячие</option>
                             <option value="Тёплый">Тёплые</option>
                             <option value="Холодный">Холодные</option>
                         </select>
-
                         <select id="regionFilter" class="filter-select" onchange="applyFilters()">
                             <option value="">Все регионы</option>
-                            <option value="chuvash">Чувашская Республика</option>
-                            <option value="other">Другие регионы</option>
                         </select>
-                        <button class="btn-download" onclick="downloadScoredExcel()">
-                            📥 Скачать Excel с результатами
-                        </button>
+                        <select id="qualityFilter" class="filter-select" onchange="applyFilters()">
+                            <option value="">Любое качество данных</option>
+                            <option value="Высокое">Высокое качество</option>
+                            <option value="Среднее">Среднее качество</option>
+                            <option value="Низкое">Низкое качество</option>
+                        </select>
+                        <div class="chip-group" id="stopChipGroup">
+                            <button class="active" data-mode="all" onclick="setStopFilter('all')">Все</button>
+                            <button data-mode="without" onclick="setStopFilter('without')">Без стоп-факторов</button>
+                            <button data-mode="only" onclick="setStopFilter('only')">Только стоп-факторы</button>
+                        </div>
+                        <button class="btn-download" onclick="downloadScoredExcel()">Скачать Excel</button>
                     </div>
                 </div>
                 <div class="table-wrapper">
                     <table id="leads-table">
                         <thead>
                             <tr>
-                                <th>Название / Компания</th>
-                                <th>ИНН</th>
-                                <th>Выручка</th>
-                                <th>A_score (Фин.)</th>
-                                <th>B_score (Масшт.)</th>
-                                <th>C_score (Отрасль)</th>
-                                <th>Итоговый скоринг</th>
-                                <th>Сегмент</th>
-
+                                <th>Компания</th>
                                 <th>Регион</th>
+                                <th class="num">Выручка</th>
+                                <th class="num">A</th>
+                                <th class="num">B</th>
+                                <th class="num">C</th>
+                                <th class="num">D</th>
+                                <th class="num">E</th>
+                                <th class="num">Итог</th>
+                                <th>Сегмент</th>
+                                <th>Качество данных</th>
+                                <th>Контакты</th>
+                                <th>Стоп-факторы</th>
                             </tr>
                         </thead>
-                        <tbody id="table-body">
-                            <!-- Populated dynamically -->
-                        </tbody>
+                        <tbody id="table-body"></tbody>
                     </table>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- DETAIL POPUP -->
+    <!-- ДЕТАЛЬНАЯ ПАНЕЛЬ КОМПАНИИ -->
     <div class="modal-overlay" id="modal-overlay" onclick="closeDetails()"></div>
     <div class="modal" id="details-modal">
         <div class="modal-header">
-            <h3 id="modal-company-name">Название компании</h3>
+            <div>
+                <h3 id="modal-company-name">Название компании</h3>
+                <div class="modal-inn" id="modal-inn-top">ИНН —</div>
+            </div>
             <button class="close-btn" onclick="closeDetails()">&times;</button>
         </div>
         <div class="modal-body">
-            <div class="score-circle-container">
-                <div class="score-circle" id="details-score-circle" style="--score-pct: 0;">
-                    <span id="modal-total-score">0.0</span>
-                </div>
+
+            <div class="score-summary">
                 <div>
-                    <div style="font-size: 14px; color: var(--text-secondary);">Итоговый скор-балл</div>
-                    <div class="tag" id="modal-segment-badge" style="margin-top: 8px;">Теплый</div>
+                    <div class="ss-value" id="modal-total-score">0.0</div>
+                    <div class="ss-label">Итоговый скоринг-балл (0–100)</div>
                 </div>
+                <div class="tag" id="modal-segment-badge">Тёплый</div>
             </div>
 
             <div>
-                <h4 style="font-size: 14px; margin-bottom: 12px; font-weight: 600;">Детализация по категориям скоринга:
-                </h4>
-                <div class="category-breakdown">
-                    <!-- Cat A -->
-                    <div class="cat-row">
-                        <div class="cat-info">
-                            <span class="cat-name">A. Финансовое здоровье</span>
-                            <span class="cat-score" id="modal-score-a">0 / 100</span>
-                        </div>
-                        <div class="progress-bar-bg">
-                            <div class="progress-bar-fill" id="modal-bar-a" style="width: 0%;"></div>
-                        </div>
-                    </div>
-                    <!-- Cat B -->
-                    <div class="cat-row">
-                        <div class="cat-info">
-                            <span class="cat-name">B. Масштаб и зрелость</span>
-                            <span class="cat-score" id="modal-score-b">0 / 100</span>
-                        </div>
-                        <div class="progress-bar-bg">
-                            <div class="progress-bar-fill" id="modal-bar-b" style="width: 0%;"></div>
-                        </div>
-                    </div>
-                    <!-- Cat C -->
-                    <div class="cat-row">
-                        <div class="cat-info">
-                            <span class="cat-name">C. Отраслевая релевантность</span>
-                            <span class="cat-score" id="modal-score-c">0 / 100</span>
-                        </div>
-                        <div class="progress-bar-bg">
-                            <div class="progress-bar-fill" id="modal-bar-c" style="width: 0%;"></div>
-                        </div>
-                    </div>
-                    <!-- Cat D -->
-                    <div class="cat-row">
-                        <div class="cat-info">
-                            <span class="cat-name">D. Доступность контакта</span>
-                            <span class="cat-score" id="modal-score-d">0 / 100</span>
-                        </div>
-                        <div class="progress-bar-bg">
-                            <div class="progress-bar-fill" id="modal-bar-d" style="width: 0%;"></div>
-                        </div>
-                    </div>
-                    <!-- Cat E -->
-                    <div class="cat-row">
-                        <div class="cat-info">
-                            <span class="cat-name">E. Юридический статус и риски</span>
-                            <span class="cat-score" id="modal-score-e">0 / 100</span>
-                        </div>
-                        <div class="progress-bar-bg">
-                            <div class="progress-bar-fill" id="modal-bar-e" style="width: 0%;"></div>
-                        </div>
-                    </div>
-                </div>
+                <div class="modal-subhead">Детализация по категориям</div>
+                <div class="category-breakdown" id="category-breakdown"></div>
             </div>
 
-            <!-- Diagnostics -->
-            <div class="diag-box">
-                <h4 style="font-weight: 600; margin-bottom: 8px; font-size: 13px;">Диагностические данные компании:</h4>
-                <div class="diag-item">
-                    <span class="diag-label">ИНН:</span>
-                    <span class="diag-value" id="modal-inn">-</span>
-                </div>
-                <div class="diag-item">
-                    <span class="diag-label">Региональный Идентификатор:</span>
-                    <span class="diag-value" id="modal-region-coeff">Обычный (1.0x порогов)</span>
-                </div>
-
-                <div class="diag-item">
-                    <span class="diag-label">Финансовые данные в базе:</span>
-                    <span class="diag-value" id="modal-fin-exists">Есть</span>
-                </div>
-                <div class="diag-item">
-                    <span class="diag-label">Статус Категории C:</span>
-                    <span class="diag-value" id="modal-status-c">-</span>
-                </div>
-                <div class="diag-item"
-                    style="border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 4px;">
-                    <span class="diag-label">Адрес:</span>
-                    <span class="diag-value" id="modal-address"
-                        style="font-size: 11px; max-width: 70%; text-align: right; word-wrap: break-word;">-</span>
-                </div>
+            <div>
+                <div class="modal-subhead">Контакты</div>
+                <div class="contact-list" id="contact-list"></div>
             </div>
 
-            <!-- Stop factors alert box -->
-            <div class="diag-box" id="stop-factors-explain-box"
-                style="background-color: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: var(--radius-md);">
-                <div style="display: flex; gap: 8px; color: var(--color-hot); font-weight: 700;">
-                    <span>⚠️</span>
-                    <span>Сработали Стоп-Факторы:</span>
-                </div>
-                <ul id="modal-stop-factors-list"
-                    style="margin-left: 20px; margin-top: 6px; display: flex; flex-direction: column; gap: 4px;">
-                    <!-- Filled dynamically -->
-                     
-                </ul>
+            <div>
+                <div class="modal-subhead">Диагностика компании</div>
+                <div class="diag-box" id="diag-box"></div>
+            </div>
+
+            <div class="stop-explain-box" id="stop-factors-explain-box" style="display:none;">
+                <div class="stop-explain-title"><span>⚠</span><span>Сработали стоп-факторы</span></div>
+                <ul id="modal-stop-factors-list"></ul>
             </div>
         </div>
     </div>
