@@ -277,6 +277,33 @@ def calculate_scoring(df: pd.DataFrame, preset: dict) -> pd.DataFrame:
                 status[~has_f1.values & has_f2.values] = vals.get("email_only", "только второй")
                 status[has_f1.values & has_f2.values] = vals.get("both", "оба")
                 result[f"{cat_id}_{d_id}"] = status
+            elif d_type == "categorical_unknown":
+                f_ids = diag.get("features", [])
+                status_list = [[] for _ in range(len(result))]
+                
+                for f_id in f_ids:
+                    mapping = {}
+                    for f in cat.get("features", []):
+                        if f["id"] == f_id:
+                            mapping = f.get("scoring_method", {}).get("params", {}).get("mapping", {})
+                            break
+                            
+                    s = feature_series_cache.get(f"{cat_id}_{f_id}", pd.Series(np.nan, index=result.index))
+                    has_s = s.notna() & (s.astype(str).str.strip() != "")
+                    
+                    clean_s = pd.to_numeric(s, errors="coerce").astype("Int64").astype(str)
+                    clean_s = np.where(clean_s == "<NA>", s.astype(str).str.strip(), clean_s)
+                    
+                    is_unknown = has_s & ~pd.Series(clean_s).isin(mapping.keys())
+                    
+                    for i, unk in enumerate(is_unknown):
+                        if unk:
+                            status_list[i].append(f"UNKNOWN_{f_id.upper()}")
+                            
+                vals = diag.get("values", {})
+                none_val = vals.get("none", "OK")
+                final_status = [", ".join(st) if st else none_val for st in status_list]
+                result[f"{cat_id}_{d_id}"] = final_status
 
         # Final Category Score
         cat_final = np.round(cat_base_score, 1) * stop_factor

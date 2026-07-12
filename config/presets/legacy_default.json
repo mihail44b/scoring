@@ -633,6 +633,17 @@
           },
           "name": "ИНН руководителя"
         }
+      ],
+      "diagnostic_columns": [
+        {
+          "id": "status",
+          "name": "Статус ОКФС/ОКОПФ",
+          "type": "categorical_unknown",
+          "features": ["okfs", "okopf"],
+          "values": {
+            "none": "OK"
+          }
+        }
       ]
     }
   ]
