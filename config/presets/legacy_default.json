@@ -154,18 +154,7 @@
       "id": "B",
       "name": "Масштаб и зрелость",
       "weight": 0.01,
-      "stop_factors": [
-        {
-          "type": "exact_value",
-          "feature": "employees",
-          "value": 0
-        },
-        {
-          "type": "exact_value",
-          "feature": "reserves",
-          "value": 0
-        }
-      ],
+      "stop_factors": [],
       "features": [
         {
           "id": "registration",
@@ -337,15 +326,7 @@
       "id": "D",
       "name": "Доступность контакта",
       "weight": 0.01,
-      "stop_factors": [
-        {
-          "type": "missing_all",
-          "features": [
-            "phone",
-            "email"
-          ]
-        }
-      ],
+      "stop_factors": [],
       "features": [
         {
           "id": "phone",
@@ -420,15 +401,17 @@
           "name": "Должность"
         }
       ],
-      "category_modifiers": [
+      "diagnostic_columns": [
         {
-          "type": "zero_if_missing_all",
-          "features": [
-            "phone",
-            "website",
-            "address",
-            "email"
-          ]
+          "id": "contact_status",
+          "type": "contact_status",
+          "features": ["phone", "email"],
+          "values": {
+            "both": "телефон и email",
+            "phone_only": "только телефон",
+            "email_only": "только email",
+            "none": "нет контактов"
+          }
         }
       ]
     },

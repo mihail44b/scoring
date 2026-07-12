@@ -261,6 +261,23 @@ def calculate_scoring(df: pd.DataFrame, preset: dict) -> pd.DataFrame:
                     missing = missing & (s.isna() | (s.astype(str).str.strip() == ""))
                 cat_base_score = np.where(missing, 0.0, cat_base_score)
                 
+        # Diagnostic columns (do not affect scoring, for analysis only)
+        for diag in cat.get("diagnostic_columns", []):
+            d_type = diag.get("type")
+            d_id = diag.get("id")
+            if d_type == "contact_status" and len(diag.get("features", [])) >= 2:
+                f1_id, f2_id = diag["features"][0], diag["features"][1]
+                vals = diag.get("values", {})
+                s1 = feature_series_cache.get(f"{cat_id}_{f1_id}", pd.Series(np.nan, index=result.index))
+                s2 = feature_series_cache.get(f"{cat_id}_{f2_id}", pd.Series(np.nan, index=result.index))
+                has_f1 = s1.notna() & (s1.astype(str).str.strip() != "")
+                has_f2 = s2.notna() & (s2.astype(str).str.strip() != "")
+                status = np.full(len(result), vals.get("none", "нет контактов"), dtype=object)
+                status[has_f1.values & ~has_f2.values] = vals.get("phone_only", "только первый")
+                status[~has_f1.values & has_f2.values] = vals.get("email_only", "только второй")
+                status[has_f1.values & has_f2.values] = vals.get("both", "оба")
+                result[f"{cat_id}_{d_id}"] = status
+
         # Final Category Score
         cat_final = np.round(cat_base_score, 1) * stop_factor
         result[f"{cat_id}_score"] = cat_final
