@@ -58,7 +58,7 @@ function renderSidebar() {
     }
 
     // Вкладка Raw JSON
-    sidebar.appendChild(createTabEl("raw", "💻 Raw JSON"));
+    sidebar.appendChild(createTabEl("raw", "💻 Файл пресета"));
 }
 
 function createTabEl(id, title) {
@@ -223,7 +223,7 @@ function renderGeneralSettings(container) {
 
 function renderCategorySettings(container, category, catIndex) {
     // Основные настройки категории
-    container.appendChild(createInputRow("Slug", category.id, (val) => category.id = val));
+    container.appendChild(createInputRow("Идентификатор", category.id, (val) => category.id = val));
     container.appendChild(createInputRow("Название", category.name, (val) => category.name = val));
 
     if (category.id === "A" || category.name === "Фин. здоровье") {
@@ -277,7 +277,7 @@ function renderCategorySettings(container, category, catIndex) {
             feat.name = val;
             header.textContent = `Признак: ${val}`;
         }));
-        card.appendChild(createInputRow("Slug", feat.id, (val) => feat.id = val));
+        card.appendChild(createInputRow("Идентификатор", feat.id, (val) => feat.id = val));
         
         // ВЕС УБРАН ИЗ КАРТОЧКИ, так как он редактируется в верхнем блоке
 

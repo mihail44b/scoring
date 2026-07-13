@@ -1,14 +1,8 @@
 import pandas as pd
 
-
 def build_result(df: pd.DataFrame, preset: dict, include_source: bool = True) -> pd.DataFrame:
     """
     Формирует итоговый DataFrame для экспорта.
-    
-    Args:
-        df: DataFrame со всеми колонками (исходные + скоринг)
-        preset: Конфигурация
-        include_source: включить исходные колонки в результат
     """
     id_columns = preset.get("id_columns", ["ОГРН", "ИНН", "Краткое наименование"])
     
@@ -18,8 +12,11 @@ def build_result(df: pd.DataFrame, preset: dict, include_source: bool = True) ->
         "scoring_entropy", "_region_mult", "scoring_completeness"
     ]
     
+    cat_scores = []
+    
     for cat in preset.get("categories", []):
         cat_id = cat["id"]
+        cat_scores.append(f"{cat_id}_score")
         all_generated_cols.extend([
             f"{cat_id}_score",
             f"{cat_id}_completeness",
@@ -30,15 +27,19 @@ def build_result(df: pd.DataFrame, preset: dict, include_source: bool = True) ->
             
     exclude_list = set(all_generated_cols)
     
-    # Колонки, которые пойдут в финальный отчет
-    target_columns = ["scoring_total", "scoring_completeness", "scoring_segment", "enrichment_priority"]
+    # Колонки, которые пойдут в финальный отчет в нужном порядке
+    target_columns = cat_scores + ["scoring_completeness", "scoring_total", "scoring_segment", "enrichment_priority"]
     
     rename_map = {
+        "scoring_completeness": "Качество данных (%)",
         "scoring_total": "Итоговый скоринг",
-        "scoring_completeness": "Полнота данных (%)",
         "scoring_segment": "Сегмент",
         "enrichment_priority": "Приоритет обогащения"
     }
+    
+    for cat in preset.get("categories", []):
+        cat_id = cat["id"]
+        rename_map[f"{cat_id}_score"] = f"Балл категории {cat_id}"
 
     if include_source:
         source_cols = [c for c in df.columns if c not in exclude_list]

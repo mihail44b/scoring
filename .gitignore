@@ -36,6 +36,7 @@ result.xlsx
 scoring_result.xlsx
 data/
 uploads/
+temp/
 
 # IDE и редакторы
 .idea/

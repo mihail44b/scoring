@@ -69,6 +69,9 @@ async function handleFileUpload(event) {
             try {
                 sessionStorage.setItem('dashboardData', JSON.stringify(data));
                 sessionStorage.setItem('fileName', file.name);
+                if (data.file_id) {
+                    sessionStorage.setItem('fileId', data.file_id);
+                }
             } catch(e) { console.warn('Не удалось сохранить данные в session storage (возможно файл слишком большой)'); }
 
             populateRegionFilterOptions();
@@ -96,10 +99,11 @@ function renderDashboard() {
 function resetSession() {
     sessionStorage.removeItem('dashboardData');
     sessionStorage.removeItem('fileName');
+    sessionStorage.removeItem('fileId');
     dashboardData = null;
     originalFile = null;
     
-    document.getElementById('upload-panel').style.display = 'flex';
+    document.getElementById('upload-panel').style.display = 'block';
     document.getElementById('dashboard').style.display = 'none';
     document.getElementById('file-name-display').style.display = 'none';
     document.getElementById('resetSessionBtn').style.display = 'none';
@@ -180,6 +184,13 @@ function populateSegments(stats) {
         document.getElementById(`seg-${key}-share`).innerText        = `${share}%`;
         document.getElementById(`seg-${key}-bar`).style.width        = `${share}%`;
         document.getElementById(`seg-${key}-avg`).innerText          = avg.toFixed(1);
+
+        // Привязываем кликабельность для фильтрации
+        const cardEl = document.getElementById(`seg-${key}`);
+        if (cardEl) {
+            cardEl.onclick = () => toggleSegmentFilter(label);
+            cardEl.style.cursor = 'pointer';
+        }
     });
 }
 
@@ -564,24 +575,13 @@ function closeDetails() {
 // ─── Экспорт ─────────────────────────────────────────────────────────────
 
 async function downloadScoredExcel() {
-    if (!originalFile) return;
-    const formData = new FormData();
-    formData.append('file', originalFile);
-
-    try {
-        const res = await fetch('/score', { method: 'POST', body: formData });
-        if (res.ok) {
-            const blob = await res.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `scoring_final_${originalFile.name}`;
-            a.click();
-        } else {
-            alert('Не удалось скачать файл.');
-        }
-    } catch (e) {
-        console.error(e);
-        alert('Ошибка сети.');
+    const fileId = sessionStorage.getItem('fileId');
+    if (!fileId) {
+        alert('Сессия истекла или исходный файл не найден. Пожалуйста, загрузите базу заново.');
+        return;
     }
+    const fileName = sessionStorage.getItem('fileName') || 'base.xlsx';
+    
+    // Перенаправляем на эндпоинт скачивания
+    window.location.href = `/api/score/download/${fileId}?filename=${encodeURIComponent(fileName)}`;
 }
