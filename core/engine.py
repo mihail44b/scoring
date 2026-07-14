@@ -157,11 +157,57 @@ def calculate_scoring(df: pd.DataFrame, preset: dict) -> pd.DataFrame:
                 mapping = params.get("mapping", {})
                 def_score = params.get("default_score", 0.0)
                 emp_score = params.get("empty_score", 0.0)
+                match_type = params.get("match_type", "exact")
+                case_sensitive = params.get("case_sensitive", False)
                 
+                # Подготовка словаря для поиска без учета регистра
+                processed_mapping = mapping
+                if not case_sensitive and match_type != "range":
+                    processed_mapping = {str(k).lower(): v for k, v in mapping.items()}
+
+                def _parse_range(val_num, key_str):
+                    key_str = key_str.strip()
+                    try:
+                        if key_str.startswith("<="): return val_num <= float(key_str[2:])
+                        if key_str.startswith(">="): return val_num >= float(key_str[2:])
+                        if key_str.startswith("<"): return val_num < float(key_str[1:])
+                        if key_str.startswith(">"): return val_num > float(key_str[1:])
+                        if "-" in key_str:
+                            parts = key_str.split("-")
+                            if len(parts) == 2:
+                                return float(parts[0]) <= val_num <= float(parts[1])
+                        return val_num == float(key_str)
+                    except ValueError:
+                        return False
+
                 def _map_val(v):
                     if pd.isna(v) or str(v).strip() == "":
                         return emp_score
-                    return mapping.get(str(v).strip(), def_score)
+                    
+                    v_str = str(v).strip()
+                    if not case_sensitive and match_type != "range":
+                        v_str = v_str.lower()
+
+                    if match_type == "exact":
+                        return processed_mapping.get(v_str, def_score)
+                    elif match_type == "starts_with":
+                        for k, score in processed_mapping.items():
+                            if v_str.startswith(str(k)): return score
+                        return def_score
+                    elif match_type == "contains":
+                        for k, score in processed_mapping.items():
+                            if str(k) in v_str: return score
+                        return def_score
+                    elif match_type == "range":
+                        try:
+                            v_num = float(v_str.replace(',', '.'))
+                        except ValueError:
+                            return def_score
+                        for k, score in mapping.items():
+                            if _parse_range(v_num, str(k)):
+                                return score
+                        return def_score
+                    return def_score
                 
                 score_series = series.map(_map_val)
                 # Специфично для РМСП: пустое поле может означать полное присутствие (100%)

@@ -308,7 +308,6 @@
             padding: 16px;
             margin-bottom: 16px;
             position: relative;
-            overflow: hidden;
         }
         
         .feature-card::before {
@@ -319,6 +318,8 @@
             bottom: 0;
             width: 3px;
             background: var(--primary-gradient);
+            border-top-left-radius: 8px;
+            border-bottom-left-radius: 8px;
         }
 
         .feature-header {
@@ -336,6 +337,103 @@
         }
         input[type="number"] {
             -moz-appearance: textfield;
+        }
+
+        /* Modal Styling */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .modal-content {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 32px;
+            width: 400px;
+            max-width: 90%;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            position: relative;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: help;
+            margin-left: 8px;
+        }
+
+        .tooltip .tooltip-text {
+            visibility: hidden;
+            width: 280px;
+            background-color: var(--panel-bg);
+            color: var(--text-primary);
+            text-align: left;
+            border-radius: 8px;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            position: absolute;
+            z-index: 1001;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -140px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            font-weight: normal;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
         }
     </style>
 </head>
@@ -391,6 +489,46 @@
                 </div>
             </div>
         </main>
+    </div>
+
+    <!-- Add Feature Modal -->
+    <div class="modal-overlay" id="addFeatureModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeAddFeatureModal()">✕</button>
+            <div class="modal-title">Добавить признак</div>
+            
+            <div style="margin-bottom: 16px;">
+                <div class="form-label" style="width: auto; margin-bottom: 8px;">Выберите тип логики:</div>
+                <select id="feature-type-select" class="form-input" style="width: 100%;">
+                    <option value="binary_presence">Бинарное наличие (Да/Нет)</option>
+                    <option value="categorical_mapping">Сопоставление (Словарь / Диапазоны)</option>
+                    <option value="log_scale">Логарифмическая шкала (Суммы, Активы)</option>
+                    <option value="log_score_simple">Простая шкала (Сотрудники)</option>
+                    <option value="percentile_rank">Перцентильный ранг</option>
+                    <option value="debt_ratio">Долговая нагрузка (Отношение)</option>
+                </select>
+            </div>
+
+            <div class="modal-actions">
+                <button class="nav-btn" onclick="closeAddFeatureModal()">Отмена</button>
+                <button class="btn-save" style="padding: 8px 20px;" onclick="confirmAddFeature()">Добавить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Delete Modal -->
+    <div class="modal-overlay" id="confirmDeleteModal">
+        <div class="modal-content" style="width: 360px;">
+            <button class="modal-close" onclick="closeConfirmDeleteModal()">✕</button>
+            <div class="modal-title" style="color: #ef4444;">Подтвердите удаление</div>
+            <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 24px;" id="confirmDeleteText">
+                Вы уверены, что хотите удалить этот элемент?
+            </div>
+            <div class="modal-actions">
+                <button class="nav-btn" onclick="closeConfirmDeleteModal()">Отмена</button>
+                <button class="btn-save" style="background: #ef4444; padding: 8px 20px;" id="confirmDeleteBtn">Удалить</button>
+            </div>
+        </div>
     </div>
 
     <script src="/static/js/settings.js"></script>
