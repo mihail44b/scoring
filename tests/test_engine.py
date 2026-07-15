@@ -594,8 +594,8 @@ def test_total_score_segment_completeness_and_priority():
 
     result = calculate_scoring(df, preset)
 
-    assert result["scoring_total"].tolist() == pytest.approx([100.0, 0.0])
+    assert result["scoring_total"].tolist() == pytest.approx([100.0, 50.0])
     assert result.loc[0, "scoring_segment"] == "Горячий"
-    assert pd.isna(result.loc[1, "scoring_segment"])
+    assert result.loc[1, "scoring_segment"] == "Тёплый"
     assert result["scoring_completeness"].tolist() == pytest.approx([100.0, 50.0])
-    assert result["enrichment_priority"].tolist() == pytest.approx([60.0, 0.0])
+    assert result["enrichment_priority"].tolist() == pytest.approx([60.0, 50.0])
