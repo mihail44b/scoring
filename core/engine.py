@@ -111,6 +111,8 @@ def calculate_scoring(df: pd.DataFrame, preset: dict) -> pd.DataFrame:
                 threshold = params.get("threshold", 0)
                 scale = params.get("scale", 20)
                 apply_reg = params.get("apply_regional_coeff", False)
+                if isinstance(apply_reg, str):
+                    apply_reg = apply_reg.lower() == "true"
                 
                 t_series = threshold / region_mult if apply_reg else pd.Series(threshold, index=result.index)
                 val = pd.to_numeric(series, errors="coerce").fillna(0)

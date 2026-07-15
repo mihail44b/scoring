@@ -491,6 +491,14 @@ async def score_preview(file: UploadFile = File(...)):
 
     preset = get_active_preset()
     validation = validate_input(df, preset)
+
+    if not validation.is_valid:
+        return JSONResponse(status_code=422, content={
+            "detail": "Ошибка валидации",
+            "errors": validation.errors,
+            "warnings": validation.warnings,
+        })
+
     df_scored = calculate_scoring(df, preset)
 
     preview_cols = preset.get("id_columns", [])
