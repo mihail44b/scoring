@@ -53,10 +53,18 @@ function closeAddPresetModal() {
     document.getElementById("addPresetModal").classList.remove("active");
 }
 
+function showAlert(msg) {
+    document.getElementById("infoAlertMessage").textContent = msg;
+    document.getElementById("infoAlertModal").classList.add("active");
+}
+function closeInfoAlertModal() {
+    document.getElementById("infoAlertModal").classList.remove("active");
+}
+
 async function confirmAddPreset() {
     const filename = document.getElementById("new-preset-filename").value.trim();
     if (!filename) {
-        alert("Введите имя файла");
+        showAlert("Введите имя файла");
         return;
     }
     
@@ -72,14 +80,14 @@ async function confirmAddPreset() {
             changePreset(filename.endsWith(".json") ? filename : filename + ".json");
         } else {
             const err = await res.json();
-            alert("Ошибка: " + err.detail);
+            showAlert("Ошибка: " + err.detail);
         }
-    } catch(e) { alert(e); }
+    } catch(e) { showAlert(e); }
 }
 
 async function deleteCurrentPreset() {
     if (!currentPresetName || currentPresetName === "legacy_default.json") {
-        alert("Нельзя удалить этот пресет.");
+        showAlert("Нельзя удалить этот пресет.");
         return;
     }
     showConfirmDeleteModal(`Вы уверены, что хотите удалить пресет ${currentPresetName} с диска?`, async () => {
@@ -89,9 +97,9 @@ async function deleteCurrentPreset() {
                 await loadPresets();
             } else {
                 const err = await res.json();
-                alert("Ошибка: " + err.detail);
+                showAlert("Ошибка: " + err.detail);
             }
-        } catch(e) { alert(e); }
+        } catch(e) { showAlert(e); }
     });
 }
 
@@ -452,28 +460,39 @@ function renderCategorySettings(container, category, catIndex) {
         typeLabel.style.fontSize = "12px";
         typeLabel.style.fontWeight = "bold";
         typeLabel.style.width = "120px";
-        typeLabel.textContent = sf.type;
+        const typeMap = {
+            "exact_value": "Точное совпад.",
+            "numeric_condition": "Числовое усл.",
+            "present": "Наличие (флаг)",
+            "missing_all": "Пропуск всех",
+            "categorical_in": "Словарь (in)"
+        };
+        typeLabel.textContent = typeMap[sf.type] || sf.type;
         row.appendChild(typeLabel);
 
-        const idInput = document.createElement("input");
-        idInput.className = "form-input";
-        idInput.placeholder = "ID признака";
-        idInput.value = sf.feature_id || "";
-        idInput.onchange = (e) => sf.feature_id = e.target.value;
-        row.appendChild(idInput);
+        if (sf.type !== "missing_all") {
+            const idInput = document.createElement("input");
+            idInput.className = "form-input";
+            idInput.placeholder = "ID признака";
+            idInput.value = sf.feature || "";
+            idInput.style.flex = "1";
+            idInput.onchange = (e) => sf.feature = e.target.value;
+            row.appendChild(idInput);
+        }
 
         if (sf.type === "exact_value") {
             const valInput = document.createElement("input");
             valInput.className = "form-input";
             valInput.placeholder = "Значение (value)";
             valInput.value = sf.value !== undefined ? sf.value : "";
+            valInput.style.flex = "1";
             valInput.onchange = (e) => sf.value = e.target.value;
             row.appendChild(valInput);
         } else if (sf.type === "numeric_condition") {
             const opSelect = document.createElement("select");
             opSelect.className = "form-input";
-            opSelect.style.maxWidth = "80px";
-            ["<", "<=", "==", ">=", ">"].forEach(op => {
+            opSelect.style.width = "45px";
+            ["<", "<=", "==", ">=", ">", "!="].forEach(op => {
                 const opt = document.createElement("option");
                 opt.value = op;
                 opt.textContent = op;
@@ -488,15 +507,31 @@ function renderCategorySettings(container, category, catIndex) {
             valInput.type = "number";
             valInput.placeholder = "Значение";
             valInput.value = sf.value !== undefined ? sf.value : "";
+            valInput.style.flex = "1";
             valInput.onchange = (e) => sf.value = Number(e.target.value);
             row.appendChild(valInput);
+            
+            const regLabel = document.createElement("label");
+            regLabel.style.fontSize = "12px";
+            regLabel.style.display = "flex";
+            regLabel.style.alignItems = "center";
+            regLabel.style.gap = "4px";
+            
+            const regCheck = document.createElement("input");
+            regCheck.type = "checkbox";
+            regCheck.checked = sf.use_regional_coeff || false;
+            regCheck.onchange = (e) => sf.use_regional_coeff = e.target.checked;
+            
+            regLabel.appendChild(regCheck);
+            regLabel.appendChild(document.createTextNode("Рег. коэфф."));
+            row.appendChild(regLabel);
         } else if (sf.type === "present") {
-            const flagSelect = document.createElement("select");
-            flagSelect.className = "form-input";
-            flagSelect.innerHTML = `<option value="true">Да (true)</option><option value="false">Нет (false)</option>`;
-            flagSelect.value = sf.flag !== undefined ? sf.flag.toString() : "true";
-            flagSelect.onchange = (e) => sf.flag = e.target.value === "true";
-            row.appendChild(flagSelect);
+            const info = document.createElement("div");
+            info.style.flex = "1";
+            info.style.fontSize = "12px";
+            info.style.color = "var(--text-secondary)";
+            info.textContent = "Обнуляет балл, если ячейка не пустая";
+            row.appendChild(info);
         } else {
             const info = document.createElement("div");
             info.style.flex = "1";
@@ -766,20 +801,21 @@ function confirmAddStopFactor() {
     const type = document.getElementById("stop-factor-type-select").value;
     
     if (!tempSfCat.stop_factors) tempSfCat.stop_factors = [];
-    const newSf = { type: type, feature_id: "new_feature_id" };
+    const newSf = { type: type, feature: "" };
     
     if (type === "exact_value") {
-        newSf.value = "строка_или_число";
+        newSf.value = "";
     } else if (type === "numeric_condition") {
         newSf.operator = ">";
-        newSf.value = 0;
+        newSf.use_regional_coeff = false;
     } else if (type === "present") {
-        newSf.flag = true;
+        // Убрали бесполезный flag, ядро использует только факт наличия ключа feature
     }
     
     tempSfCat.stop_factors.push(newSf);
+    const catIdxToReload = tempSfCatIndex;
     closeAddStopFactorModal();
-    selectTab(`cat_${tempSfCatIndex}`);
+    selectTab(`cat_${catIdxToReload}`);
 }
 
 // ─── Утилиты UI ─────────────────────────────────────────────────────────────
@@ -906,10 +942,10 @@ function applyRawJson() {
         const text = document.getElementById("raw-json-textarea").value;
         const parsed = JSON.parse(text);
         currentPresetData = parsed;
-        alert("JSON успешно применён в памяти. Нажмите 'Сохранить пресет' чтобы записать на диск.");
+        showAlert("JSON успешно применён в памяти. Нажмите 'Сохранить пресет' чтобы записать на диск.");
         renderSidebar();
     } catch(e) {
-        alert("Ошибка в синтаксисе JSON: " + e.message);
+        showAlert("Ошибка в синтаксисе JSON: " + e.message);
     }
 }
 
@@ -941,16 +977,20 @@ async function saveCurrentPreset() {
         }
     });
 
-    if (!isValid && currentTab !== "raw") {
-        alert("ОШИБКА ВЕСОВ:\n\n" + errors.join("\n") + "\n\nИсправьте значения перед сохранением.");
-        return; // Блокируем сохранение если веса не равны 1
+    const statusEl = document.getElementById("save-status");
+
+    if (!isValid) {
+        statusEl.textContent = "❌ Исправьте ошибки весов";
+        showAlert("ОШИБКА ВЕСОВ:\n\n" + errors.join("\n") + "\n\nИсправьте значения перед сохранением.");
+        return;
     }
 
     if (currentTab === "raw") {
         try {
             currentPresetData = JSON.parse(document.getElementById("raw-json-textarea").value);
-        } catch(e) {
-            alert("Ошибка в синтаксисе JSON. Исправьте перед сохранением.");
+        } catch (e) {
+            statusEl.textContent = "❌ Ошибка синтаксиса JSON";
+            showAlert("Ошибка в синтаксисе JSON. Исправьте перед сохранением.");
             return;
         }
     }
@@ -958,7 +998,6 @@ async function saveCurrentPreset() {
     const payload = {};
     payload[currentPresetName] = currentPresetData;
     
-    const statusEl = document.getElementById("save-status");
     statusEl.textContent = "Сохранение...";
     statusEl.style.display = "inline";
     
@@ -976,7 +1015,7 @@ async function saveCurrentPreset() {
             const err = await res.json();
             statusEl.textContent = "❌ Ошибка сервера";
             statusEl.style.color = "#ef4444";
-            alert("Ошибка сохранения:\n" + err.detail);
+            showAlert("Ошибка сохранения:\n" + err.detail);
         }
     } catch (e) {
         statusEl.textContent = "❌ Ошибка сети";
