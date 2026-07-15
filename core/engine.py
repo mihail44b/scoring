@@ -417,7 +417,7 @@ def calculate_scoring(df: pd.DataFrame, preset: dict) -> pd.DataFrame:
     any_zero = pd.Series(False, index=result.index)
     for cat in preset["categories"]:
         cat_id = cat["id"]
-        any_zero = any_zero | (result[f"{cat_id}_score"] == 0)
+        any_zero = any_zero | (result[f"{cat_id}_stop_factor"] == 0)
         
     total = np.where(any_zero, 0, np.round(total_weighted, 2))
     result["scoring_total"] = total

@@ -402,7 +402,8 @@ function applyFilters() {
 function segClass(seg) {
     if (seg === 'Горячий') return 'hot';
     if (seg === 'Тёплый') return 'warm';
-    return 'cold';
+    if (seg === 'Холодный') return 'cold';
+    return 'none';
 }
 
 function qualityClass(label) {
@@ -467,7 +468,7 @@ function populateTable(records) {
             <td class="num">${scoreCellHtml(rec.D_score)}</td>
             <td class="num">${scoreCellHtml(rec.E_score)}</td>
             <td class="num"><span class="score-total-cell">${rec.scoring_total}</span></td>
-            <td><span class="tag ${segClass(rec.scoring_segment)}">${rec.scoring_segment}</span></td>
+            <td><span class="tag ${segClass(rec.scoring_segment)}">${rec.scoring_segment || 'Отказ'}</span></td>
             <td><span class="quality-badge ${qualityClass(rec.ui_data_quality_label)}"><span class="dot"></span>${rec.ui_data_quality_label}</span></td>
             <td>${contactDotsHtml(rec)}</td>
             <td>${stopFlagHtml(rec)}</td>
@@ -493,7 +494,7 @@ function openDetails(rec) {
 
     const badge = document.getElementById('modal-segment-badge');
     badge.className = `tag ${segClass(rec.scoring_segment)}`;
-    badge.innerText = rec.scoring_segment;
+    badge.innerText = rec.scoring_segment || 'Отказ';
 
     // Категории
     const breakdown = document.getElementById('category-breakdown');
