@@ -43,6 +43,58 @@ function changePreset(name) {
     selectTab("general");
 }
 
+function createNewPreset() {
+    document.getElementById("new-preset-filename").value = "";
+    document.getElementById("addPresetModal").classList.add("active");
+    setTimeout(() => document.getElementById("new-preset-filename").focus(), 100);
+}
+
+function closeAddPresetModal() {
+    document.getElementById("addPresetModal").classList.remove("active");
+}
+
+async function confirmAddPreset() {
+    const filename = document.getElementById("new-preset-filename").value.trim();
+    if (!filename) {
+        alert("Введите имя файла");
+        return;
+    }
+    
+    try {
+        const res = await fetch("/api/settings/configs/new", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({filename})
+        });
+        if (res.ok) {
+            closeAddPresetModal();
+            await loadPresets();
+            changePreset(filename.endsWith(".json") ? filename : filename + ".json");
+        } else {
+            const err = await res.json();
+            alert("Ошибка: " + err.detail);
+        }
+    } catch(e) { alert(e); }
+}
+
+async function deleteCurrentPreset() {
+    if (!currentPresetName || currentPresetName === "legacy_default.json") {
+        alert("Нельзя удалить этот пресет.");
+        return;
+    }
+    showConfirmDeleteModal(`Вы уверены, что хотите удалить пресет ${currentPresetName} с диска?`, async () => {
+        try {
+            const res = await fetch("/api/settings/configs/" + currentPresetName, { method: "DELETE" });
+            if (res.ok) {
+                await loadPresets();
+            } else {
+                const err = await res.json();
+                alert("Ошибка: " + err.detail);
+            }
+        } catch(e) { alert(e); }
+    });
+}
+
 function renderSidebar() {
     const sidebar = document.getElementById("tab-list");
     sidebar.innerHTML = "";
@@ -234,15 +286,42 @@ function renderGeneralSettings(container) {
 
 
     // Segments
-    container.appendChild(createSection("Сегментация"));
+    const segHeader = createSection("Сегментация");
+    const addSegBtn = document.createElement("button");
+    addSegBtn.textContent = "+ Добавить сегмент";
+    addSegBtn.className = "nav-btn";
+    addSegBtn.style.marginBottom = "16px";
+    addSegBtn.style.marginLeft = "16px";
+    addSegBtn.onclick = () => {
+        if (!currentPresetData.segments) currentPresetData.segments = {};
+        const newKey = "new_segment_" + Date.now();
+        currentPresetData.segments[newKey] = { label: "Новый сегмент", min_score: 0 };
+        selectTab("general");
+    };
+    const segHeaderWrap = document.createElement("div");
+    segHeaderWrap.style.display = "flex";
+    segHeaderWrap.style.alignItems = "center";
+    segHeaderWrap.appendChild(segHeader);
+    segHeaderWrap.appendChild(addSegBtn);
+    container.appendChild(segHeaderWrap);
+
     for (const [key, seg] of Object.entries(currentPresetData.segments || {})) {
         const row = document.createElement("div");
         row.className = "form-row";
         
-        const label = document.createElement("div");
-        label.className = "form-label";
-        label.textContent = `Сегмент: ${key}`;
-        
+        const keyInput = document.createElement("input");
+        keyInput.className = "form-input";
+        keyInput.value = key;
+        keyInput.style.maxWidth = "120px";
+        keyInput.onchange = (e) => {
+            const newKey = e.target.value;
+            if (newKey && newKey !== key) {
+                currentPresetData.segments[newKey] = currentPresetData.segments[key];
+                delete currentPresetData.segments[key];
+                selectTab("general");
+            }
+        };
+
         const labelInput = document.createElement("input");
         labelInput.className = "form-input";
         labelInput.value = seg.label;
@@ -256,10 +335,22 @@ function renderGeneralSettings(container) {
         scoreInput.placeholder = "Мин. балл";
         scoreInput.style.maxWidth = "100px";
         scoreInput.onchange = (e) => seg.min_score = Number(e.target.value);
+        
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "✕";
+        delBtn.style.background = "none";
+        delBtn.style.border = "none";
+        delBtn.style.color = "#ef4444";
+        delBtn.style.cursor = "pointer";
+        delBtn.onclick = () => {
+            delete currentPresetData.segments[key];
+            selectTab("general");
+        };
 
-        row.appendChild(label);
+        row.appendChild(keyInput);
         row.appendChild(labelInput);
         row.appendChild(scoreInput);
+        row.appendChild(delBtn);
         container.appendChild(row);
     }
 
@@ -326,6 +417,111 @@ function renderCategorySettings(container, category, catIndex) {
             category.features, 
             (feat) => feat.name || feat.id
         );
+    }
+
+    // Стоп-факторы
+    container.appendChild(createSection(`Стоп-факторы (${category.stop_factors ? category.stop_factors.length : 0})`));
+    const addSfBtn = document.createElement("button");
+    addSfBtn.textContent = "+ Добавить стоп-фактор";
+    addSfBtn.className = "nav-btn";
+    addSfBtn.style.marginBottom = "16px";
+    addSfBtn.onclick = () => showAddStopFactorModal(category, catIndex);
+    container.appendChild(addSfBtn);
+
+    const sfContainer = document.createElement("div");
+    sfContainer.style.background = "var(--glass-bg)";
+    sfContainer.style.border = "1px solid var(--border-color)";
+    sfContainer.style.borderRadius = "8px";
+    sfContainer.style.padding = "16px";
+    sfContainer.style.marginBottom = "24px";
+    sfContainer.style.display = "flex";
+    sfContainer.style.flexDirection = "column";
+    sfContainer.style.gap = "8px";
+
+    (category.stop_factors || []).forEach((sf, sfIndex) => {
+        const row = document.createElement("div");
+        row.style.display = "flex";
+        row.style.gap = "8px";
+        row.style.alignItems = "center";
+        row.style.background = "var(--bg-color)";
+        row.style.padding = "8px";
+        row.style.borderRadius = "4px";
+        row.style.border = "1px solid var(--border-color)";
+
+        const typeLabel = document.createElement("div");
+        typeLabel.style.fontSize = "12px";
+        typeLabel.style.fontWeight = "bold";
+        typeLabel.style.width = "120px";
+        typeLabel.textContent = sf.type;
+        row.appendChild(typeLabel);
+
+        const idInput = document.createElement("input");
+        idInput.className = "form-input";
+        idInput.placeholder = "ID признака";
+        idInput.value = sf.feature_id || "";
+        idInput.onchange = (e) => sf.feature_id = e.target.value;
+        row.appendChild(idInput);
+
+        if (sf.type === "exact_value") {
+            const valInput = document.createElement("input");
+            valInput.className = "form-input";
+            valInput.placeholder = "Значение (value)";
+            valInput.value = sf.value !== undefined ? sf.value : "";
+            valInput.onchange = (e) => sf.value = e.target.value;
+            row.appendChild(valInput);
+        } else if (sf.type === "numeric_condition") {
+            const opSelect = document.createElement("select");
+            opSelect.className = "form-input";
+            opSelect.style.maxWidth = "80px";
+            ["<", "<=", "==", ">=", ">"].forEach(op => {
+                const opt = document.createElement("option");
+                opt.value = op;
+                opt.textContent = op;
+                opSelect.appendChild(opt);
+            });
+            opSelect.value = sf.operator || "==";
+            opSelect.onchange = (e) => sf.operator = e.target.value;
+            row.appendChild(opSelect);
+
+            const valInput = document.createElement("input");
+            valInput.className = "form-input";
+            valInput.type = "number";
+            valInput.placeholder = "Значение";
+            valInput.value = sf.value !== undefined ? sf.value : "";
+            valInput.onchange = (e) => sf.value = Number(e.target.value);
+            row.appendChild(valInput);
+        } else if (sf.type === "present") {
+            const flagSelect = document.createElement("select");
+            flagSelect.className = "form-input";
+            flagSelect.innerHTML = `<option value="true">Да (true)</option><option value="false">Нет (false)</option>`;
+            flagSelect.value = sf.flag !== undefined ? sf.flag.toString() : "true";
+            flagSelect.onchange = (e) => sf.flag = e.target.value === "true";
+            row.appendChild(flagSelect);
+        } else {
+            const info = document.createElement("div");
+            info.style.flex = "1";
+            info.style.fontSize = "12px";
+            info.style.color = "var(--text-secondary)";
+            info.textContent = "Редактируйте параметры в Raw JSON";
+            row.appendChild(info);
+        }
+
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "✕";
+        delBtn.style.background = "none";
+        delBtn.style.border = "none";
+        delBtn.style.color = "#ef4444";
+        delBtn.style.cursor = "pointer";
+        delBtn.onclick = () => {
+            category.stop_factors.splice(sfIndex, 1);
+            selectTab(`cat_${catIndex}`);
+        };
+        row.appendChild(delBtn);
+
+        sfContainer.appendChild(row);
+    });
+    if ((category.stop_factors || []).length > 0) {
+        container.appendChild(sfContainer);
     }
 
     container.appendChild(createSection(`Параметры признаков (${category.features ? category.features.length : 0})`));
@@ -550,6 +746,42 @@ function confirmAddFeature() {
     selectTab(`cat_${catIndex}`); // Перерисовка текущей вкладки
 }
 
+let tempSfCat = null;
+let tempSfCatIndex = null;
+
+function showAddStopFactorModal(category, catIndex) {
+    tempSfCat = category;
+    tempSfCatIndex = catIndex;
+    document.getElementById("addStopFactorModal").classList.add("active");
+}
+
+function closeAddStopFactorModal() {
+    document.getElementById("addStopFactorModal").classList.remove("active");
+    tempSfCat = null;
+    tempSfCatIndex = null;
+}
+
+function confirmAddStopFactor() {
+    if (!tempSfCat) return;
+    const type = document.getElementById("stop-factor-type-select").value;
+    
+    if (!tempSfCat.stop_factors) tempSfCat.stop_factors = [];
+    const newSf = { type: type, feature_id: "new_feature_id" };
+    
+    if (type === "exact_value") {
+        newSf.value = "строка_или_число";
+    } else if (type === "numeric_condition") {
+        newSf.operator = ">";
+        newSf.value = 0;
+    } else if (type === "present") {
+        newSf.flag = true;
+    }
+    
+    tempSfCat.stop_factors.push(newSf);
+    closeAddStopFactorModal();
+    selectTab(`cat_${tempSfCatIndex}`);
+}
+
 // ─── Утилиты UI ─────────────────────────────────────────────────────────────
 
 function createSection(titleText) {
@@ -699,8 +931,9 @@ async function saveCurrentPreset() {
 
     // 2. Веса признаков в каждой категории
     (currentPresetData.categories || []).forEach(c => {
+        if (!c.features || c.features.length === 0) return;
         let featSum = 0;
-        (c.features || []).forEach(f => featSum += (f.weight || 0));
+        c.features.forEach(f => featSum += (f.weight || 0));
         featSum = Math.round(featSum * 1000) / 1000;
         if (featSum !== 1) {
             isValid = false;
@@ -740,8 +973,10 @@ async function saveCurrentPreset() {
             statusEl.textContent = "✅ Сохранено";
             allPresets[currentPresetName] = JSON.parse(JSON.stringify(currentPresetData));
         } else {
+            const err = await res.json();
             statusEl.textContent = "❌ Ошибка сервера";
             statusEl.style.color = "#ef4444";
+            alert("Ошибка сохранения:\n" + err.detail);
         }
     } catch (e) {
         statusEl.textContent = "❌ Ошибка сети";

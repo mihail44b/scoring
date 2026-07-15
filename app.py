@@ -567,3 +567,47 @@ async def update_configs(payload: dict):
             updated_files.append(filename)
             
     return {"status": "ok", "message": "Пресеты успешно обновлены", "updated": updated_files}
+
+
+class NewPresetRequest(BaseModel):
+    filename: str
+
+@app.post("/api/settings/configs/new")
+async def create_preset(req: NewPresetRequest):
+    """Создает новый пустой пресет."""
+    filename = req.filename.strip()
+    if not filename.endswith(".json"):
+        filename += ".json"
+    if "/" in filename or "\\" in filename or not filename:
+        raise HTTPException(status_code=400, detail="Недопустимое имя файла")
+        
+    path = os.path.join(PRESETS_DIR, filename)
+    if os.path.exists(path):
+        raise HTTPException(status_code=400, detail="Пресет с таким именем уже существует")
+        
+    empty_preset = {
+        "segments": {},
+        "enrichment_weights": { "score_weight": 0.6, "entropy_weight": 0.4 },
+        "categories": []
+    }
+    
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(empty_preset, f, ensure_ascii=False, indent=2)
+        
+    return {"status": "ok", "filename": filename, "content": empty_preset}
+
+@app.delete("/api/settings/configs/{filename}")
+async def delete_preset(filename: str):
+    """Удаляет пресет."""
+    if "/" in filename or "\\" in filename or not filename.endswith(".json"):
+        raise HTTPException(status_code=400, detail="Недопустимое имя файла")
+        
+    if filename == "legacy_default.json":
+        raise HTTPException(status_code=400, detail="Нельзя удалить системный пресет")
+        
+    path = os.path.join(PRESETS_DIR, filename)
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Пресет не найден")
+        
+    os.remove(path)
+    return {"status": "ok", "message": "Пресет удален"}
