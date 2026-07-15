@@ -57,6 +57,14 @@ function renderSidebar() {
         });
     }
 
+    // Кнопка добавления категории
+    const addCatBtn = document.createElement("div");
+    addCatBtn.className = "tab-item";
+    addCatBtn.style.color = "#10b981";
+    addCatBtn.innerHTML = "<b>+ Добавить категорию</b>";
+    addCatBtn.onclick = addNewCategory;
+    sidebar.appendChild(addCatBtn);
+
     // Вкладка Raw JSON
     sidebar.appendChild(createTabEl("raw", "💻 Файл пресета"));
 }
@@ -101,6 +109,49 @@ function selectTab(id, title = null) {
             renderCategorySettings(formContainer, currentPresetData.categories[idx], idx);
         }
     }
+}
+
+function addNewCategory() {
+    if (!currentPresetData.categories) {
+        currentPresetData.categories = [];
+    }
+    const newId = `Cat_${currentPresetData.categories.length + 1}`;
+    const newCat = {
+        id: newId,
+        name: `Новая категория ${currentPresetData.categories.length + 1}`,
+        weight: 0.0,
+        stop_factors: [],
+        features: []
+    };
+    currentPresetData.categories.push(newCat);
+    renderSidebar();
+    selectTab(`cat_${currentPresetData.categories.length - 1}`);
+}
+
+let deleteActionCallback = null;
+
+function showConfirmDeleteModal(text, callback) {
+    document.getElementById("confirmDeleteText").textContent = text;
+    deleteActionCallback = callback;
+    document.getElementById("confirmDeleteModal").classList.add("active");
+    
+    document.getElementById("confirmDeleteBtn").onclick = () => {
+        if (deleteActionCallback) deleteActionCallback();
+        closeConfirmDeleteModal();
+    };
+}
+
+function closeConfirmDeleteModal() {
+    document.getElementById("confirmDeleteModal").classList.remove("active");
+    deleteActionCallback = null;
+}
+
+function deleteCategory(catIndex) {
+    showConfirmDeleteModal(`Вы уверены, что хотите удалить категорию "${currentPresetData.categories[catIndex].name || currentPresetData.categories[catIndex].id}" и все её признаки?`, () => {
+        currentPresetData.categories.splice(catIndex, 1);
+        renderSidebar();
+        selectTab("general");
+    });
 }
 
 // ─── Утилита распределения весов ────────────────────────────────────────────
@@ -223,7 +274,22 @@ function renderGeneralSettings(container) {
 
 function renderCategorySettings(container, category, catIndex) {
     // Основные настройки категории
-    container.appendChild(createInputRow("Идентификатор", category.id, (val) => category.id = val));
+    const headerRow = document.createElement("div");
+    headerRow.style.display = "flex";
+    headerRow.style.justifyContent = "space-between";
+    headerRow.style.alignItems = "center";
+    
+    const delCatBtn = document.createElement("button");
+    delCatBtn.textContent = "Удалить категорию";
+    delCatBtn.className = "nav-btn";
+    delCatBtn.style.color = "#ef4444";
+    delCatBtn.style.borderColor = "#ef4444";
+    delCatBtn.onclick = () => deleteCategory(catIndex);
+    
+    headerRow.appendChild(createInputRow("Идентификатор", category.id, (val) => category.id = val));
+    headerRow.appendChild(delCatBtn);
+    container.appendChild(headerRow);
+    
     container.appendChild(createInputRow("Название", category.name, (val) => category.name = val));
 
     if (category.id === "A" || category.name === "Фин. здоровье") {
@@ -264,18 +330,40 @@ function renderCategorySettings(container, category, catIndex) {
 
     container.appendChild(createSection(`Параметры признаков (${category.features ? category.features.length : 0})`));
 
+    const addFeatBtn = document.createElement("button");
+    addFeatBtn.textContent = "+ Добавить признак";
+    addFeatBtn.className = "nav-btn";
+    addFeatBtn.style.marginBottom = "16px";
+    addFeatBtn.style.background = "var(--primary-gradient)";
+    addFeatBtn.style.color = "white";
+    addFeatBtn.onclick = () => showAddFeatureModal(category, catIndex);
+    container.appendChild(addFeatBtn);
+
     (category.features || []).forEach((feat, fIndex) => {
         const card = document.createElement("div");
         card.className = "feature-card";
 
         const header = document.createElement("div");
         header.className = "feature-header";
-        header.textContent = `Признак: ${feat.name || feat.id}`;
+        const fTypeSlug = feat.scoring_method ? feat.scoring_method.type : "unknown";
+        const typeLabels = {
+            "binary_presence": "Бинарное наличие",
+            "categorical_mapping": "Сопоставление (Словарь/Диапазоны)",
+            "log_scale": "Логарифмическая шкала",
+            "log_score_simple": "Простая шкала",
+            "percentile_rank": "Перцентильный ранг",
+            "debt_ratio": "Долговая нагрузка",
+            "okved_mapping": "Маппинг ОКВЭД",
+            "tax_mapping": "Маппинг Налогов"
+        };
+        const fTypeLabel = typeLabels[fTypeSlug] || fTypeSlug;
+        
+        header.innerHTML = `Признак: <span>${feat.name || feat.id}</span> <span style="font-size: 11px; font-weight: normal; color: var(--text-secondary); background: var(--glass-bg); padding: 2px 6px; border-radius: 4px; margin-left: 8px; border: 1px solid var(--border-color);">${fTypeLabel}</span>`;
         card.appendChild(header);
 
         card.appendChild(createInputRow("Название", feat.name || "", (val) => {
             feat.name = val;
-            header.textContent = `Признак: ${val}`;
+            header.querySelector("span").textContent = val;
         }));
         card.appendChild(createInputRow("Идентификатор", feat.id, (val) => feat.id = val));
         
@@ -289,7 +377,99 @@ function renderCategorySettings(container, category, catIndex) {
             if (p.scale !== undefined) {
                 card.appendChild(createInputRow("Шкала", p.scale, (val) => p.scale = Number(val), "number"));
             }
+            if (p.apply_regional_coeff !== undefined) {
+                const regRow = document.createElement("div");
+                regRow.className = "form-row";
+                const regLabel = document.createElement("div");
+                regLabel.className = "form-label";
+                regLabel.textContent = "Учитывать регион (apply_regional_coeff)";
+                const regInput = document.createElement("input");
+                regInput.type = "checkbox";
+                regInput.checked = p.apply_regional_coeff === "true" || p.apply_regional_coeff === true;
+                regInput.onchange = (e) => p.apply_regional_coeff = e.target.checked;
+                regRow.appendChild(regLabel);
+                regRow.appendChild(regInput);
+                card.appendChild(regRow);
+            }
+            if (p.revenue_feature !== undefined) {
+                card.appendChild(createInputRow("ID признака выручки", p.revenue_feature, (val) => p.revenue_feature = val));
+            }
+            if (p.present !== undefined) {
+                card.appendChild(createInputRow("Балл (Присутствует)", p.present, (val) => p.present = Number(val), "number"));
+            }
+            if (p.absent !== undefined) {
+                card.appendChild(createInputRow("Балл (Отсутствует)", p.absent, (val) => p.absent = Number(val), "number"));
+            }
+            if (p.cap !== undefined) {
+                card.appendChild(createInputRow("Макс. балл", p.cap, (val) => p.cap = Number(val), "number"));
+            }
+            if (p.special_one !== undefined) {
+                card.appendChild(createInputRow("Балл (Если значение = 1)", p.special_one, (val) => p.special_one = Number(val), "number"));
+            }
+            if (p.default_score !== undefined) {
+                card.appendChild(createInputRow("Балл по умолчанию (Не найдено)", p.default_score, (val) => p.default_score = Number(val), "number"));
+            }
+            if (p.empty_score !== undefined) {
+                card.appendChild(createInputRow("Балл (Пустая ячейка)", p.empty_score, (val) => p.empty_score = Number(val), "number"));
+            }
             if (p.mapping !== undefined) {
+                // Выбор типа маппинга (exact, starts_with, contains, range)
+                const mtRow = document.createElement("div");
+                mtRow.className = "form-row";
+                mtRow.style.marginTop = "12px";
+                const mtLabel = document.createElement("div");
+                mtLabel.className = "form-label";
+                mtLabel.textContent = "Правило поиска";
+                
+                const mtSelect = document.createElement("select");
+                mtSelect.className = "form-input";
+                mtSelect.innerHTML = `
+                    <option value="exact">Точное совпадение</option>
+                    <option value="starts_with">Начинается с (например, ОКВЭД)</option>
+                    <option value="contains">Содержит</option>
+                    <option value="range">Числовой промежуток</option>
+                `;
+                mtSelect.value = p.match_type || "exact";
+                
+                // Tooltip для числовых промежутков
+                const tooltipInfo = document.createElement("div");
+                tooltipInfo.className = "tooltip";
+                tooltipInfo.textContent = "i";
+                tooltipInfo.style.display = mtSelect.value === "range" ? "inline-flex" : "none";
+                tooltipInfo.innerHTML = `i<span class="tooltip-text"><b>Правила для промежутков:</b><br/>• 10-20 (от 10 до 20 включительно)<br/>• &lt;10 (строго меньше 10)<br/>• &lt;=10 (меньше или равно)<br/>• &gt;50 (строго больше 50)<br/>• &gt;=50 (больше или равно)<br/>• 15 (точно равно 15)</span>`;
+                
+                mtSelect.onchange = (e) => {
+                    p.match_type = e.target.value;
+                    tooltipInfo.style.display = p.match_type === "range" ? "inline-flex" : "none";
+                };
+
+                const selectWrapper = document.createElement("div");
+                selectWrapper.style.display = "flex";
+                selectWrapper.style.alignItems = "center";
+                selectWrapper.style.flex = "1";
+                selectWrapper.appendChild(mtSelect);
+                selectWrapper.appendChild(tooltipInfo);
+                
+                mtRow.appendChild(mtLabel);
+                mtRow.appendChild(selectWrapper);
+                card.appendChild(mtRow);
+
+                // Чекбокс учета регистра
+                const csRow = document.createElement("div");
+                csRow.className = "form-row";
+                const csLabel = document.createElement("div");
+                csLabel.className = "form-label";
+                csLabel.textContent = "Учитывать регистр (A ≠ a)";
+                
+                const csInput = document.createElement("input");
+                csInput.type = "checkbox";
+                csInput.checked = p.case_sensitive || false;
+                csInput.onchange = (e) => p.case_sensitive = e.target.checked;
+                
+                csRow.appendChild(csLabel);
+                csRow.appendChild(csInput);
+                card.appendChild(csRow);
+
                 const dictWrapper = document.createElement("div");
                 dictWrapper.style.marginTop = "16px";
                 const dictTitle = document.createElement("div");
@@ -306,8 +486,68 @@ function renderCategorySettings(container, category, catIndex) {
             }
         }
 
+        const delFeatBtn = document.createElement("button");
+        delFeatBtn.textContent = "Удалить признак";
+        delFeatBtn.style.marginTop = "12px";
+        delFeatBtn.style.color = "#ef4444";
+        delFeatBtn.style.background = "none";
+        delFeatBtn.style.border = "1px solid #ef4444";
+        delFeatBtn.style.padding = "4px 8px";
+        delFeatBtn.style.borderRadius = "4px";
+        delFeatBtn.style.cursor = "pointer";
+        delFeatBtn.onclick = () => {
+            showConfirmDeleteModal(`Удалить признак "${feat.name || feat.id}"?`, () => {
+                category.features.splice(fIndex, 1);
+                selectTab(`cat_${catIndex}`); // Ре-рендер
+            });
+        };
+        card.appendChild(delFeatBtn);
+
         container.appendChild(card);
     });
+}
+
+let tempAddFeatureCat = null;
+let tempAddFeatureCatIndex = null;
+
+function showAddFeatureModal(category, catIndex) {
+    tempAddFeatureCat = category;
+    tempAddFeatureCatIndex = catIndex;
+    document.getElementById("addFeatureModal").classList.add("active");
+}
+
+function closeAddFeatureModal() {
+    document.getElementById("addFeatureModal").classList.remove("active");
+    tempAddFeatureCat = null;
+    tempAddFeatureCatIndex = null;
+}
+
+function confirmAddFeature() {
+    if (!tempAddFeatureCat) return;
+    
+    const type = document.getElementById("feature-type-select").value;
+    const category = tempAddFeatureCat;
+    const catIndex = tempAddFeatureCatIndex;
+
+    if (!category.features) category.features = [];
+    const newFeatId = `feat_${category.features.length + 1}`;
+    const newFeat = {
+        id: newFeatId,
+        name: `Новый признак ${category.features.length + 1}`,
+        weight: 0.0,
+        scoring_method: { type: type, params: {} }
+    };
+
+    if (type === "binary_presence") newFeat.scoring_method.params = { present: 100, absent: 0 };
+    if (type === "log_scale") newFeat.scoring_method.params = { threshold: 1000000, scale: 20, apply_regional_coeff: false };
+    if (type === "categorical_mapping") newFeat.scoring_method.params = { mapping: {}, default_score: 0, empty_score: 0, match_type: "exact", case_sensitive: false };
+    if (type === "log_score_simple") newFeat.scoring_method.params = { cap: 100, special_one: 1 };
+    if (type === "debt_ratio") newFeat.scoring_method.params = { threshold: 0.3, revenue_feature: "revenue" };
+
+    category.features.push(newFeat);
+    
+    closeAddFeatureModal();
+    selectTab(`cat_${catIndex}`); // Перерисовка текущей вкладки
 }
 
 // ─── Утилиты UI ─────────────────────────────────────────────────────────────

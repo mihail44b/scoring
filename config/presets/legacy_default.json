@@ -651,6 +651,26 @@
           }
         }
       ]
+    },
+    {
+      "id": "Cat_6",
+      "name": "Новая категория 6",
+      "weight": 0,
+      "stop_factors": [],
+      "features": [
+        {
+          "id": "feat_1",
+          "name": "Новый признак 1",
+          "weight": 1,
+          "scoring_method": {
+            "type": "binary_presence",
+            "params": {
+              "present": 100,
+              "absent": 0
+            }
+          }
+        }
+      ]
     }
   ]
 }
