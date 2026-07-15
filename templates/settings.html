@@ -452,6 +452,8 @@
             <select class="preset-select" id="preset-selector" onchange="changePreset()">
                 <!-- Опции загружаются динамически -->
             </select>
+            <button class="nav-btn" style="padding: 4px 8px; font-size: 12px; margin-left: 8px;" onclick="createNewPreset()" title="Создать новый пресет">+</button>
+            <button class="nav-btn" style="padding: 4px 8px; font-size: 12px; color: #ef4444; border-color: #ef4444;" onclick="deleteCurrentPreset()" title="Удалить текущий пресет">🗑</button>
         </div>
 
         <div class="header-actions">
@@ -527,6 +529,46 @@
             <div class="modal-actions">
                 <button class="nav-btn" onclick="closeConfirmDeleteModal()">Отмена</button>
                 <button class="btn-save" style="background: #ef4444; padding: 8px 20px;" id="confirmDeleteBtn">Удалить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Stop-Factor Modal -->
+    <div class="modal-overlay" id="addStopFactorModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeAddStopFactorModal()">✕</button>
+            <div class="modal-title">Добавить Стоп-фактор</div>
+            
+            <div style="margin-bottom: 16px;">
+                <div class="form-label" style="width: auto; margin-bottom: 8px;">Тип условия:</div>
+                <select id="stop-factor-type-select" class="form-input" style="width: 100%;">
+                    <option value="exact_value">Точное совпадение (Строка/Число)</option>
+                    <option value="numeric_condition">Числовое условие (>, <, >=, <=)</option>
+                    <option value="present">Флаг наличия (bool)</option>
+                </select>
+            </div>
+
+            <div class="modal-actions">
+                <button class="nav-btn" onclick="closeAddStopFactorModal()">Отмена</button>
+                <button class="btn-save" style="padding: 8px 20px;" onclick="confirmAddStopFactor()">Добавить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Preset Modal -->
+    <div class="modal-overlay" id="addPresetModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeAddPresetModal()">✕</button>
+            <div class="modal-title">Создать пресет</div>
+            
+            <div style="margin-bottom: 16px;">
+                <div class="form-label" style="width: auto; margin-bottom: 8px;">Имя файла:</div>
+                <input type="text" id="new-preset-filename" class="form-input" style="width: 100%; box-sizing: border-box;" placeholder="Например: my_preset.json" onkeypress="if(event.key === 'Enter') confirmAddPreset()">
+            </div>
+
+            <div class="modal-actions">
+                <button class="nav-btn" onclick="closeAddPresetModal()">Отмена</button>
+                <button class="btn-save" style="padding: 8px 20px;" onclick="confirmAddPreset()">Создать</button>
             </div>
         </div>
     </div>
