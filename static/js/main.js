@@ -8,8 +8,55 @@ updateThemeButtonUI();
 
 let dashboardData = null;
 let originalFile = null;
+let currentSessionId = null;
+let currentPresetName = 'legacy_default.json';
 let categoryChartInstance = null;
 const CATEGORY_LABELS = { A: 'Фин. здоровье', B: 'Масштаб', C: 'Отрасль', D: 'Контакты', E: 'Юр. статус' };
+
+// ─── Загрузка списка пресетов ───────────────────────────────────────────
+
+async function loadPresetSelector() {
+    try {
+        const res = await fetch('/api/settings/configs');
+        if (!res.ok) return;
+        const configs = await res.json();
+        const selector = document.getElementById('presetSelector');
+        if (!selector) return;
+
+        selector.innerHTML = '';
+        const filenames = Object.keys(configs).sort();
+        filenames.forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name.replace('.json', '');
+            selector.appendChild(opt);
+        });
+
+        // Выбираем ранее использованный пресет из localStorage
+        const saved = localStorage.getItem('selectedPreset');
+        if (saved && filenames.includes(saved)) {
+            selector.value = saved;
+            currentPresetName = saved;
+        } else if (filenames.length > 0) {
+            currentPresetName = filenames[0];
+        }
+
+        selector.onchange = () => {
+            currentPresetName = selector.value;
+            localStorage.setItem('selectedPreset', currentPresetName);
+        };
+    } catch (e) {
+        console.warn('Не удалось загрузить список пресетов:', e);
+    }
+}
+
+function showPresetNameInHeader(presetName) {
+    const el = document.getElementById('preset-name-display');
+    if (el) {
+        el.textContent = `Пресет: ${presetName.replace('.json', '')}`;
+        el.style.display = 'inline';
+    }
+}
 
 const filters = {
     search: '',
@@ -35,6 +82,126 @@ function updateThemeButtonUI() {
     btn.innerText = currentTheme === 'light' ? 'Тёмная тема' : 'Светлая тема';
 }
 
+// ─── Сохранённые сессии (cookie + SQLite) ──────────────────────────────
+
+async function loadSavedSessions() {
+    try {
+        const res = await fetch('/api/sessions');
+        if (!res.ok) return;
+        const data = await res.json();
+        const sessions = data.sessions || [];
+
+        const panel = document.getElementById('saved-sessions-panel');
+        const list = document.getElementById('saved-sessions-list');
+        const countEl = document.getElementById('saved-sessions-count');
+
+        if (sessions.length === 0) {
+            panel.style.display = 'none';
+            return;
+        }
+
+        panel.style.display = 'block';
+        countEl.textContent = `(${sessions.length})`;
+        list.innerHTML = '';
+
+        sessions.forEach(session => {
+            const card = document.createElement('div');
+            card.className = 'session-card';
+            card.onclick = (e) => {
+                // Не восстанавливать если кликнули по кнопке удаления
+                if (e.target.closest('.session-card-delete')) return;
+                restoreSession(session.id, session.file_name, session.preset_name);
+            };
+
+            const date = new Date(session.created_at + 'Z');
+            const dateStr = date.toLocaleDateString('ru-RU', {
+                day: 'numeric', month: 'short', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+
+            card.innerHTML = `
+                <div class="session-card-icon">📊</div>
+                <div class="session-card-info">
+                    <div class="session-card-name" title="${session.file_name}">${session.file_name}</div>
+                    <div class="session-card-meta">
+                        <span>${dateStr}</span>
+                        <span>${session.record_count} записей</span>
+                        <span>${session.preset_name}</span>
+                    </div>
+                </div>
+                <button class="session-card-delete" title="Удалить сессию" onclick="deleteSessionCard(event, '${session.id}')">✕</button>
+            `;
+            list.appendChild(card);
+        });
+    } catch (e) {
+        console.warn('Не удалось загрузить сохранённые сессии:', e);
+    }
+}
+
+async function restoreSession(sessionId, fileName, presetName) {
+    const spinner = document.getElementById('spinner-overlay');
+    spinner.querySelector('h3').innerText = 'Восстановление сессии…';
+    spinner.querySelector('p').innerText = 'Загрузка сохранённых результатов скоринга';
+    spinner.style.display = 'flex';
+
+    try {
+        const res = await fetch(`/api/sessions/${sessionId}`);
+        if (!res.ok) {
+            const err = await res.json();
+            alert(`Ошибка восстановления: ${err.detail || 'Сессия не найдена'}`);
+            spinner.style.display = 'none';
+            return;
+        }
+
+        const data = await res.json();
+        dashboardData = data;
+        currentSessionId = sessionId;
+
+        document.getElementById('upload-panel').style.display = 'none';
+        document.getElementById('dashboard').style.display = 'flex';
+
+        const fileDisplay = document.getElementById('file-name-display');
+        fileDisplay.innerText = `Файл: ${fileName}`;
+        fileDisplay.style.display = 'inline';
+        document.getElementById('resetSessionBtn').style.display = 'inline-flex';
+
+        // Показываем пресет из метаданных сессии
+        if (presetName) {
+            showPresetNameInHeader(presetName);
+            currentPresetName = presetName;
+        }
+
+        populateRegionFilterOptions();
+        renderDashboard();
+    } catch (e) {
+        console.error('Ошибка восстановления сессии:', e);
+        alert('Сетевая ошибка при восстановлении сессии.');
+    } finally {
+        spinner.style.display = 'none';
+        // Восстанавливаем исходный текст спиннера
+        spinner.querySelector('h3').innerText = 'Выполняется расчёт скоринга…';
+        spinner.querySelector('p').innerText = 'Финансовые пороги, региональные коэффициенты, отраслевая релевантность';
+    }
+}
+
+async function deleteSessionCard(event, sessionId) {
+    event.stopPropagation();
+
+    try {
+        const res = await fetch(`/api/sessions/${sessionId}`, { method: 'DELETE' });
+        if (res.ok) {
+            // Если удаляем текущую активную сессию — сбрасываем дашборд
+            if (currentSessionId === sessionId) {
+                resetSession();
+            }
+            // Перезагружаем список
+            await loadSavedSessions();
+        }
+    } catch (e) {
+        console.error('Ошибка удаления сессии:', e);
+    }
+}
+
 // ─── Загрузка файла ────────────────────────────────────────────────────
 
 async function handleFileUpload(event) {
@@ -50,12 +217,19 @@ async function handleFileUpload(event) {
     const formData = new FormData();
     formData.append('file', file);
 
+    // Берём выбранный пресет из селектора
+    const presetSelector = document.getElementById('presetSelector');
+    const presetName = presetSelector ? presetSelector.value : 'legacy_default.json';
+    currentPresetName = presetName;
+    localStorage.setItem('selectedPreset', presetName);
+
     try {
-        const res = await fetch('/api/score/full', { method: 'POST', body: formData });
+        const res = await fetch(`/api/score/full?preset_name=${encodeURIComponent(presetName)}`, { method: 'POST', body: formData });
 
         if (res.ok) {
             const data = await res.json();
             dashboardData = data;
+            currentSessionId = data.session_id || null;
 
             document.getElementById('upload-panel').style.display = 'none';
             document.getElementById('dashboard').style.display = 'flex';
@@ -64,15 +238,7 @@ async function handleFileUpload(event) {
             fileDisplay.innerText = `Файл: ${file.name}`;
             fileDisplay.style.display = 'inline';
             document.getElementById('resetSessionBtn').style.display = 'inline-flex';
-
-            // Сохраняем в сессию
-            try {
-                sessionStorage.setItem('dashboardData', JSON.stringify(data));
-                sessionStorage.setItem('fileName', file.name);
-                if (data.file_id) {
-                    sessionStorage.setItem('fileId', data.file_id);
-                }
-            } catch(e) { console.warn('Не удалось сохранить данные в session storage (возможно файл слишком большой)'); }
+            showPresetNameInHeader(presetName);
 
             populateRegionFilterOptions();
             renderDashboard();
@@ -97,43 +263,32 @@ function renderDashboard() {
 }
 
 function resetSession() {
-    sessionStorage.removeItem('dashboardData');
-    sessionStorage.removeItem('fileName');
-    sessionStorage.removeItem('fileId');
+    // Удаляем сессию на сервере если есть активная
+    if (currentSessionId) {
+        fetch(`/api/sessions/${currentSessionId}`, { method: 'DELETE' }).catch(() => { });
+    }
+
     dashboardData = null;
     originalFile = null;
-    
+    currentSessionId = null;
+
     document.getElementById('upload-panel').style.display = 'block';
     document.getElementById('dashboard').style.display = 'none';
     document.getElementById('file-name-display').style.display = 'none';
+    document.getElementById('preset-name-display').style.display = 'none';
     document.getElementById('resetSessionBtn').style.display = 'none';
     document.getElementById('excelFile').value = '';
+
+    // Перезагружаем список сессий
+    loadSavedSessions();
 }
 
-// Восстановление сессии при перезагрузке
+// Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {
-    const savedData = sessionStorage.getItem('dashboardData');
-    const savedName = sessionStorage.getItem('fileName');
-    if (savedData) {
-        try {
-            dashboardData = JSON.parse(savedData);
-            document.getElementById('upload-panel').style.display = 'none';
-            document.getElementById('dashboard').style.display = 'flex';
-            
-            if (savedName) {
-                const fileDisplay = document.getElementById('file-name-display');
-                fileDisplay.innerText = `Файл: ${savedName}`;
-                fileDisplay.style.display = 'inline';
-            }
-            document.getElementById('resetSessionBtn').style.display = 'inline-flex';
-            
-            populateRegionFilterOptions();
-            renderDashboard();
-        } catch (e) {
-            console.error('Ошибка восстановления сессии', e);
-            sessionStorage.removeItem('dashboardData');
-        }
-    }
+    // Загружаем список пресетов для селектора
+    loadPresetSelector();
+    // Загружаем сохранённые сессии из SQLite (через cookie)
+    loadSavedSessions();
 });
 
 // ─── Сводная строка ────────────────────────────────────────────────────
@@ -159,31 +314,31 @@ function populateSegments(stats) {
     const total = stats.total || 1;
     const config = stats.segments_config || {};
 
-    const hotConf  = config.hot  || { label: 'Горячий',  min_score: 70 };
-    const warmConf = config.warm || { label: 'Тёплый',   min_score: 40 };
+    const hotConf = config.hot || { label: 'Горячий', min_score: 70 };
+    const warmConf = config.warm || { label: 'Тёплый', min_score: 40 };
     const coldConf = config.cold || { label: 'Холодный', min_score: 30 };
 
     // Диапазоны: для холодного отображаем строго от его min_score
     const segDefs = [
-        { key: 'hot',  label: hotConf.label,   range: `балл ≥ ${hotConf.min_score}` },
-        { key: 'warm', label: warmConf.label,  range: `балл ${warmConf.min_score}–${hotConf.min_score - 1}` },
-        { key: 'cold', label: coldConf.label,  range: `балл ${coldConf.min_score}–${warmConf.min_score - 1}` },
+        { key: 'hot', label: hotConf.label, range: `балл ≥ ${hotConf.min_score}` },
+        { key: 'warm', label: warmConf.label, range: `балл ${warmConf.min_score}–${hotConf.min_score - 1}` },
+        { key: 'cold', label: coldConf.label, range: `балл ${coldConf.min_score}–${warmConf.min_score - 1}` },
     ];
 
     segDefs.forEach(({ key, label, range }) => {
         const count = stats.segments[label] || 0;
         const share = total > 0 ? Math.round((count / total) * 100) : 0;
-        const avg   = (stats.segment_avg_score || {})[label] || 0;
+        const avg = (stats.segment_avg_score || {})[label] || 0;
 
-        const nameEl  = document.querySelector(`#seg-${key} .segment-name`);
+        const nameEl = document.querySelector(`#seg-${key} .segment-name`);
         const rangeEl = document.getElementById(`seg-${key}-range`);
-        if (nameEl)  nameEl.innerText  = label;
+        if (nameEl) nameEl.innerText = label;
         if (rangeEl) rangeEl.innerText = range;
 
-        document.getElementById(`seg-${key}-count`).innerText        = count;
-        document.getElementById(`seg-${key}-share`).innerText        = `${share}%`;
-        document.getElementById(`seg-${key}-bar`).style.width        = `${share}%`;
-        document.getElementById(`seg-${key}-avg`).innerText          = avg.toFixed(1);
+        document.getElementById(`seg-${key}-count`).innerText = count;
+        document.getElementById(`seg-${key}-share`).innerText = `${share}%`;
+        document.getElementById(`seg-${key}-bar`).style.width = `${share}%`;
+        document.getElementById(`seg-${key}-avg`).innerText = avg.toFixed(1);
 
         // Привязываем кликабельность для фильтрации
         const cardEl = document.getElementById(`seg-${key}`);
@@ -208,13 +363,13 @@ function onSegmentSelectChange() {
 }
 
 function highlightActiveSegmentCard() {
-    const config   = (dashboardData?.stats?.segments_config) || {};
-    const hotLabel  = (config.hot  || {}).label || 'Горячий';
+    const config = (dashboardData?.stats?.segments_config) || {};
+    const hotLabel = (config.hot || {}).label || 'Горячий';
     const warmLabel = (config.warm || {}).label || 'Тёплый';
     const coldLabel = (config.cold || {}).label || 'Холодный';
 
     const labelToKey = {
-        [hotLabel]:  'seg-hot',
+        [hotLabel]: 'seg-hot',
         [warmLabel]: 'seg-warm',
         [coldLabel]: 'seg-cold',
     };
@@ -576,13 +731,14 @@ function closeDetails() {
 // ─── Экспорт ─────────────────────────────────────────────────────────────
 
 async function downloadScoredExcel() {
-    const fileId = sessionStorage.getItem('fileId');
+    const fileId = dashboardData?.file_id;
     if (!fileId) {
-        alert('Сессия истекла или исходный файл не найден. Пожалуйста, загрузите базу заново.');
+        alert('Файл не найден. Пожалуйста, загрузите базу заново.');
         return;
     }
-    const fileName = sessionStorage.getItem('fileName') || 'base.xlsx';
-    
+    const fileName = originalFile?.name || 'base.xlsx';
+    const presetParam = currentPresetName ? `&preset_name=${encodeURIComponent(currentPresetName)}` : '';
+
     // Перенаправляем на эндпоинт скачивания
-    window.location.href = `/api/score/download/${fileId}?filename=${encodeURIComponent(fileName)}`;
+    window.location.href = `/api/score/download/${fileId}?filename=${encodeURIComponent(fileName)}${presetParam}`;
 }

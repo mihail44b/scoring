@@ -12,7 +12,7 @@ from typing import List, Dict, Any, Optional, Union
 
 import pandas as pd
 import numpy as np
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Cookie, Request
 from fastapi.responses import Response, JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ValidationError
@@ -23,6 +23,7 @@ from core.validator import validate_input
 from core.engine import calculate_scoring
 from core.result_builder import build_result
 from core.exporter import export_to_excel
+from core.session_store import init_db, save_session, get_sessions, get_session_data, delete_session, cleanup_old_sessions
 import uuid
 import urllib.parse
 
@@ -125,9 +126,26 @@ app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__
 
 PRESETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config", "presets")
 
-def get_active_preset() -> dict:
-    """Загружает активный пресет конфигурации (правила скоринга)."""
-    path = os.path.join(PRESETS_DIR, "legacy_default.json")
+# ─── Инициализация SQLite при старте сервера ──────────────────────────────────
+init_db()
+deleted = cleanup_old_sessions()
+if deleted:
+    print(f"[session_store] Очищено {deleted} устаревших сессий")
+
+
+def _get_or_create_browser_id(request: Request) -> tuple[str, bool]:
+    """Читает browser_id из cookie. Если нет — генерирует новый. Возвращает (id, is_new)."""
+    browser_id = request.cookies.get("browser_id")
+    if browser_id:
+        return browser_id, False
+    return str(uuid.uuid4()), True
+
+
+def get_active_preset(preset_name: str = "legacy_default.json") -> dict:
+    """Загружает пресет конфигурации по имени файла."""
+    path = os.path.join(PRESETS_DIR, preset_name)
+    if not os.path.exists(path):
+        path = os.path.join(PRESETS_DIR, "legacy_default.json")
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
@@ -262,10 +280,11 @@ async def score_file(file: UploadFile = File(...)):
 
 
 @app.post("/api/score/full")
-async def score_full(file: UploadFile = File(...)):
+async def score_full(request: Request, file: UploadFile = File(...), preset_name: str = "legacy_default.json"):
     """
     Принимает Excel-файл, проводит скоринг и возвращает агрегированные данные (JSON).
     Используется дашбордом для построения графиков и отрисовки реестра.
+    Автоматически сохраняет результат в SQLite и привязывает к browser_id из cookie.
     """
     if not file.filename.endswith((".xlsx", ".xls")):
         raise HTTPException(status_code=400, detail="Только .xlsx")
@@ -283,7 +302,7 @@ async def score_full(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Ошибка чтения файла: {str(e)}")
 
-    preset = get_active_preset()
+    preset = get_active_preset(preset_name)
     validation = validate_input(df, preset)
     
     if not validation.is_valid:
@@ -415,7 +434,7 @@ async def score_full(file: UploadFile = File(...)):
 
     quality_dist = df_clean["ui_data_quality_label"].value_counts().to_dict()
 
-    return {
+    response_data = {
         "file_id": file_id,
         "validation": {
             "is_valid": validation.is_valid,
@@ -443,8 +462,31 @@ async def score_full(file: UploadFile = File(...)):
         "records": records,
     }
 
+    # ─── Сохранение сессии в SQLite и установка cookie ───
+    browser_id, is_new = _get_or_create_browser_id(request)
+    
+    session_id = save_session(
+        browser_id=browser_id,
+        file_id=file_id,
+        file_name=file.filename,
+        preset_name=preset_name,
+        scoring_data=response_data,
+    )
+    response_data["session_id"] = session_id
+
+    response = JSONResponse(content=response_data)
+    if is_new:
+        response.set_cookie(
+            key="browser_id",
+            value=browser_id,
+            max_age=365 * 24 * 3600,  # 1 год
+            httponly=False,            # JS должен читать для отладки
+            samesite="lax",
+        )
+    return response
+
 @app.get("/api/score/download/{file_id}")
-async def download_scored_file(file_id: str, filename: str = "result.xlsx"):
+async def download_scored_file(file_id: str, filename: str = "result.xlsx", preset_name: str = "legacy_default.json"):
     """
     Эндпоинт для скачивания файла после того, как он был загружен в /api/score/full.
     Восстанавливает исходный файл, применяет скоринг и отдает XLSX.
@@ -458,7 +500,7 @@ async def download_scored_file(file_id: str, filename: str = "result.xlsx"):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Ошибка чтения файла: {str(e)}")
 
-    preset = get_active_preset()
+    preset = get_active_preset(preset_name)
     validation = validate_input(df, preset)
     
     if not validation.is_valid:
@@ -611,3 +653,61 @@ async def delete_preset(filename: str):
         
     os.remove(path)
     return {"status": "ok", "message": "Пресет удален"}
+
+
+# ─── 7. API СЕССИЙ (COOKIES + SQLITE) ────────────────────────────────────────
+
+@app.get("/api/sessions")
+async def list_sessions(request: Request):
+    """
+    Возвращает список сохранённых сессий скоринга для текущего браузера.
+    Идентификация — через cookie browser_id.
+    Возвращает только метаданные (без тяжёлого scoring_data).
+    """
+    browser_id, is_new = _get_or_create_browser_id(request)
+    
+    if is_new:
+        # Новый браузер — сессий нет, но ставим cookie
+        response = JSONResponse(content={"sessions": []})
+        response.set_cookie(
+            key="browser_id",
+            value=browser_id,
+            max_age=365 * 24 * 3600,
+            httponly=False,
+            samesite="lax",
+        )
+        return response
+    
+    sessions = get_sessions(browser_id)
+    return {"sessions": sessions}
+
+
+@app.get("/api/sessions/{session_id}")
+async def get_session(session_id: str, request: Request):
+    """
+    Возвращает полные данные сессии (включая scoring_data) для восстановления дашборда.
+    Проверяет принадлежность к текущему browser_id.
+    """
+    browser_id = request.cookies.get("browser_id")
+    if not browser_id:
+        raise HTTPException(status_code=401, detail="Cookie browser_id не найден")
+    
+    data = get_session_data(session_id, browser_id)
+    if not data:
+        raise HTTPException(status_code=404, detail="Сессия не найдена")
+    
+    return data["scoring_data"]
+
+
+@app.delete("/api/sessions/{session_id}")
+async def remove_session(session_id: str, request: Request):
+    """Удаляет сессию скоринга."""
+    browser_id = request.cookies.get("browser_id")
+    if not browser_id:
+        raise HTTPException(status_code=401, detail="Cookie browser_id не найден")
+    
+    deleted = delete_session(session_id, browser_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Сессия не найдена")
+    
+    return {"status": "ok", "message": "Сессия удалена"}

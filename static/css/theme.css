@@ -113,20 +113,43 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
-body, body * {
+body,
+body * {
     transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
 }
 
-a { color: var(--accent); text-decoration: none; }
+a {
+    color: var(--accent);
+    text-decoration: none;
+}
 
-.mono, .tabular { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.mono,
+.tabular {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+}
 
-::selection { background: var(--accent-soft); }
+::selection {
+    background: var(--accent-soft);
+}
 
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border-color-strong); border-radius: 8px; }
-::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-color-strong);
+    border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-tertiary);
+}
 
 /* ─── Header (общий для всех страниц) ────────────────────────────────── */
 
@@ -142,7 +165,11 @@ header {
     z-index: 100;
 }
 
-.logo-section { display: flex; align-items: center; gap: 12px; }
+.logo-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
 
 .logo-icon {
     background: var(--primary);
@@ -174,9 +201,14 @@ header {
     letter-spacing: 0.2px;
 }
 
-.header-actions { display: flex; align-items: center; gap: 10px; }
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
 
-.theme-toggle-btn, .nav-btn {
+.theme-toggle-btn,
+.nav-btn {
     background: var(--panel-bg-soft);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
@@ -192,7 +224,8 @@ header {
     font-family: var(--font-ui);
 }
 
-.theme-toggle-btn:hover, .nav-btn:hover {
+.theme-toggle-btn:hover,
+.nav-btn:hover {
     background-color: var(--border-color);
     border-color: var(--border-color-strong);
 }
