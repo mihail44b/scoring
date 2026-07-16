@@ -286,33 +286,45 @@ def calculate_scoring(df: pd.DataFrame, preset: dict) -> pd.DataFrame:
             if sf_type == "numeric_condition":
                 f_id = sf.get("feature")
                 op = sf.get("operator")
-                use_reg = sf.get("use_regional_coeff", False)
                 
+                # Ищем настройки в самой фиче для автоопределения рег. коэффициента
+                threshold = 0
+                use_reg = False
+                for f in cat.get("features", []):
+                    if f["id"] == f_id:
+                        threshold = f.get("scoring_method", {}).get("params", {}).get("threshold", 0)
+                        apply_reg = f.get("scoring_method", {}).get("params", {}).get("apply_regional_coeff", False)
+                        if isinstance(apply_reg, str):
+                            apply_reg = apply_reg.lower() == "true"
+                        use_reg = apply_reg
+                        break
+                        
+                # Переопределение порога из стоп-фактора
                 if "value" in sf and sf["value"] is not None and sf["value"] != "":
                     threshold = float(sf["value"])
-                else:
-                    # Поиск порога, привязанного к признаку (обратная совместимость)
-                    threshold = 0
-                    for f in cat["features"]:
-                        if f["id"] == f_id:
-                            threshold = f.get("scoring_method", {}).get("params", {}).get("threshold", 0)
-                            break
                         
                 t_series = threshold / region_mult if use_reg else pd.Series(threshold, index=result.index)
-                val = pd.to_numeric(feature_series_cache.get(f"{cat_id}_{f_id}", pd.Series(0, index=result.index)), errors="coerce").fillna(0)
+                
+                raw_val = feature_series_cache.get(f"{cat_id}_{f_id}", pd.Series(np.nan, index=result.index))
+                val = pd.to_numeric(raw_val, errors="coerce")
                 
                 if op == "<":
-                    stop_factor = stop_factor * np.where(val < t_series, 0, 1)
+                    cond = val < t_series
                 elif op == "<=":
-                    stop_factor = stop_factor * np.where(val <= t_series, 0, 1)
+                    cond = val <= t_series
                 elif op == "==":
-                    stop_factor = stop_factor * np.where(val == t_series, 0, 1)
+                    cond = val == t_series
                 elif op == ">=":
-                    stop_factor = stop_factor * np.where(val >= t_series, 0, 1)
+                    cond = val >= t_series
                 elif op == ">":
-                    stop_factor = stop_factor * np.where(val > t_series, 0, 1)
+                    cond = val > t_series
                 elif op == "!=":
-                    stop_factor = stop_factor * np.where(val != t_series, 0, 1)
+                    cond = val != t_series
+                else:
+                    cond = pd.Series(False, index=result.index)
+                    
+                # Применяем только для существующих значений (не NaN)
+                stop_factor = stop_factor * np.where(val.notna() & cond, 0, 1)
                     
             elif sf_type == "exact_value":
                 f_id = sf.get("feature")
@@ -320,30 +332,51 @@ def calculate_scoring(df: pd.DataFrame, preset: dict) -> pd.DataFrame:
                 val = feature_series_cache.get(f"{cat_id}_{f_id}", pd.Series(np.nan, index=result.index))
                 
                 if isinstance(val_check, (int, float)):
-                    val = pd.to_numeric(val, errors="coerce")
-                    is_zero = (val == val_check)
-                    stop_factor = stop_factor * np.where(is_zero, 0, 1)
+                    val_num = pd.to_numeric(val, errors="coerce")
+                    is_match = val_num.notna() & (val_num == val_check)
+                elif isinstance(val_check, str):
+                    val_str = val.astype(str).str.strip().str.lower()
+                    val_check_str = str(val_check).strip().lower()
+                    is_match = val.notna() & (val_str == val_check_str)
+                else:
+                    is_match = pd.Series(False, index=result.index)
+                    
+                stop_factor = stop_factor * np.where(is_match, 0, 1)
                     
             elif sf_type == "missing_all":
                 f_ids = sf.get("features", [])
-                missing = pd.Series(True, index=result.index)
-                for f_id in f_ids:
-                    s = feature_series_cache.get(f"{cat_id}_{f_id}", pd.Series(np.nan, index=result.index))
-                    missing = missing & (s.isna() | (s.astype(str).str.strip() == ""))
+                if not f_ids:
+                    missing = pd.Series(False, index=result.index)
+                else:
+                    missing = pd.Series(True, index=result.index)
+                    for f_id in f_ids:
+                        s = feature_series_cache.get(f"{cat_id}_{f_id}", pd.Series(np.nan, index=result.index))
+                        missing = missing & (s.isna() | (s.astype(str).str.strip() == ""))
                 stop_factor = stop_factor * np.where(missing, 0, 1)
                 
             elif sf_type == "categorical_in":
                 f_id = sf.get("feature")
                 score_val = sf.get("values_with_score", 0)
-                # Специфично для ОКВЭД: ищем классы с определенным баллом
                 mapping = {}
-                for f in cat["features"]:
+                for f in cat.get("features", []):
                     if f["id"] == f_id:
                         mapping = f.get("scoring_method", {}).get("params", {}).get("mapping", {})
                         break
-                classes_with_score = {k for k, v in mapping.items() if v == score_val}
-                classes = feature_series_cache.get(f"{cat_id}_{f_id}_class", pd.Series("", index=result.index))
-                stop_factor = stop_factor * np.where(classes.isin(classes_with_score), 0, 1)
+                
+                classes_with_score = {str(k).strip().lower() for k, v in mapping.items() if v == score_val}
+                
+                raw = feature_series_cache.get(f"{cat_id}_{f_id}", pd.Series(np.nan, index=result.index))
+                classes = feature_series_cache.get(f"{cat_id}_{f_id}_class")
+                
+                # Фоллбэк: если это не ОКВЭД и суффикса _class нет, проверяем по сырому значению
+                if classes is None:
+                    classes = raw.copy()
+                    
+                has_val = raw.notna() & (raw.astype(str).str.strip() != "")
+                classes_str = classes.astype(str).str.strip().str.lower()
+                is_match = has_val & classes_str.isin(classes_with_score)
+                
+                stop_factor = stop_factor * np.where(is_match, 0, 1)
                 
             elif sf_type == "present":
                 f_id = sf.get("feature")
