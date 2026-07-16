@@ -573,6 +573,21 @@
         </div>
     </div>
 
+    <!-- Info Alert Modal -->
+    <div class="modal-overlay" id="infoAlertModal">
+        <div class="modal-content" style="width: 400px;">
+            <button class="modal-close" onclick="closeInfoAlertModal()">✕</button>
+            <div class="modal-title">Внимание</div>
+            
+            <div style="margin-bottom: 24px; color: var(--text-secondary); white-space: pre-wrap;" id="infoAlertMessage">
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn-save" style="padding: 8px 20px;" onclick="closeInfoAlertModal()">ОК</button>
+            </div>
+        </div>
+    </div>
+
     <script src="/static/js/settings.js"></script>
 </body>
 </html>
