@@ -288,18 +288,31 @@ def calculate_scoring(df: pd.DataFrame, preset: dict) -> pd.DataFrame:
                 op = sf.get("operator")
                 use_reg = sf.get("use_regional_coeff", False)
                 
-                # Поиск порога, привязанного к признаку
-                threshold = 0
-                for f in cat["features"]:
-                    if f["id"] == f_id:
-                        threshold = f.get("scoring_method", {}).get("params", {}).get("threshold", 0)
-                        break
+                if "value" in sf and sf["value"] is not None and sf["value"] != "":
+                    threshold = float(sf["value"])
+                else:
+                    # Поиск порога, привязанного к признаку (обратная совместимость)
+                    threshold = 0
+                    for f in cat["features"]:
+                        if f["id"] == f_id:
+                            threshold = f.get("scoring_method", {}).get("params", {}).get("threshold", 0)
+                            break
                         
                 t_series = threshold / region_mult if use_reg else pd.Series(threshold, index=result.index)
                 val = pd.to_numeric(feature_series_cache.get(f"{cat_id}_{f_id}", pd.Series(0, index=result.index)), errors="coerce").fillna(0)
                 
                 if op == "<":
                     stop_factor = stop_factor * np.where(val < t_series, 0, 1)
+                elif op == "<=":
+                    stop_factor = stop_factor * np.where(val <= t_series, 0, 1)
+                elif op == "==":
+                    stop_factor = stop_factor * np.where(val == t_series, 0, 1)
+                elif op == ">=":
+                    stop_factor = stop_factor * np.where(val >= t_series, 0, 1)
+                elif op == ">":
+                    stop_factor = stop_factor * np.where(val > t_series, 0, 1)
+                elif op == "!=":
+                    stop_factor = stop_factor * np.where(val != t_series, 0, 1)
                     
             elif sf_type == "exact_value":
                 f_id = sf.get("feature")
