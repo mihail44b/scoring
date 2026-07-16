@@ -177,7 +177,6 @@ class StopFactorSchema(BaseModel):
     type: str
     feature: Optional[str] = None
     operator: Optional[str] = None
-    use_regional_coeff: Optional[Union[bool, str]] = None
     values_with_score: Optional[Union[int, float]] = None
     value: Optional[Any] = None
     features: Optional[List[str]] = None

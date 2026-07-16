@@ -506,25 +506,21 @@ function renderCategorySettings(container, category, catIndex) {
             valInput.className = "form-input";
             valInput.type = "number";
             valInput.placeholder = "Значение";
+            
+            // Обратная совместимость: если значение не задано явно, подтягиваем из настроек фичи
+            if (sf.value === undefined || sf.value === "") {
+                const feature = (category.features || []).find(f => f.id === sf.feature);
+                if (feature && feature.scoring_method && feature.scoring_method.params && feature.scoring_method.params.threshold !== undefined) {
+                    sf.value = feature.scoring_method.params.threshold;
+                }
+            }
+            
             valInput.value = sf.value !== undefined ? sf.value : "";
             valInput.style.flex = "1";
             valInput.onchange = (e) => sf.value = Number(e.target.value);
             row.appendChild(valInput);
             
-            const regLabel = document.createElement("label");
-            regLabel.style.fontSize = "12px";
-            regLabel.style.display = "flex";
-            regLabel.style.alignItems = "center";
-            regLabel.style.gap = "4px";
-            
-            const regCheck = document.createElement("input");
-            regCheck.type = "checkbox";
-            regCheck.checked = sf.use_regional_coeff || false;
-            regCheck.onchange = (e) => sf.use_regional_coeff = e.target.checked;
-            
-            regLabel.appendChild(regCheck);
-            regLabel.appendChild(document.createTextNode("Рег. коэфф."));
-            row.appendChild(regLabel);
+
         } else if (sf.type === "present") {
             const info = document.createElement("div");
             info.style.flex = "1";
@@ -807,7 +803,6 @@ function confirmAddStopFactor() {
         newSf.value = "";
     } else if (type === "numeric_condition") {
         newSf.operator = ">";
-        newSf.use_regional_coeff = false;
     } else if (type === "present") {
         // Убрали бесполезный flag, ядро использует только факт наличия ключа feature
     }
