@@ -7,7 +7,9 @@
     <title>Скоринг ДП | Аналитика базы контрагентов</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap"
+        rel="stylesheet">
     <link rel="icon" href="data:,">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="/static/css/theme.css">
@@ -25,8 +27,14 @@
             </div>
         </div>
         <div class="header-actions">
-            <span id="file-name-display" style="font-size: 12.5px; font-weight: 600; color: var(--text-secondary); display: none;"></span>
-            <button class="nav-btn" id="resetSessionBtn" onclick="resetSession()" style="display: none; background: transparent; border: 1px solid var(--border-color); cursor: pointer; color: var(--text-secondary);">Сбросить результат</button>
+            <span id="file-name-display"
+                style="font-size: 12.5px; font-weight: 600; color: var(--text-secondary); display: none;"></span>
+            <span id="preset-name-display"
+                style="font-size: 11.5px; font-weight: 500; color: var(--text-tertiary); display: none; background: var(--glass-bg); padding: 3px 8px; border-radius: 6px; border: 1px solid var(--border-color);"></span>
+            <button class="nav-btn" id="resetSessionBtn" onclick="resetSession()" style="display: none; gap: 4px;"
+                title="Вернуться к загрузке файла">
+                <span style="font-size: 15px; line-height: 1;">←</span> Новый расчёт
+            </button>
             <a href="/settings" class="nav-btn">Настройки скоринга</a>
             <button class="theme-toggle-btn" onclick="toggleTheme()" id="themeToggleBtn">Тёмная тема</button>
         </div>
@@ -39,7 +47,8 @@
             <div class="progress-overlay" id="spinner-overlay">
                 <div class="spinner"></div>
                 <h3 style="font-weight: 700; font-size: 14px;">Выполняется расчёт скоринга…</h3>
-                <p style="margin:6px 0 0; font-size:12.5px;">Финансовые пороги, региональные коэффициенты, отраслевая релевантность</p>
+                <p style="margin:6px 0 0; font-size:12.5px;">Финансовые пороги, региональные коэффициенты, отраслевая
+                    релевантность</p>
             </div>
             <div class="upload-eyebrow">Excel · .xlsx / .xls</div>
             <h1>Загрузите базу контрагентов</h1>
@@ -48,11 +57,36 @@
                 Система автоматически определит регион, оценит качество данных
                 по каждой компании и применит региональные пороги.
             </p>
+            <div class="preset-select-area" style="margin-bottom: 16px; display: flex; align-items: center; gap: 12px;">
+                <label for="presetSelector"
+                    style="font-size: 13px; font-weight: 600; color: var(--text-secondary); white-space: nowrap;">Пресет
+                    скоринга:</label>
+                <select id="presetSelector"
+                    style="flex: 1; max-width: 320px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--panel-bg-raised); color: var(--text-primary); font-size: 13px; font-weight: 500; cursor: pointer;">
+                    <option value="legacy_default.json">legacy_default.json</option>
+                </select>
+            </div>
             <div class="file-select-area">
                 <div class="file-select-btn">Выбрать файл и рассчитать</div>
                 <input type="file" id="excelFile" accept=".xlsx, .xls" onchange="handleFileUpload(event)">
             </div>
-            <div id="upload-status" style="margin-top: 12px; font-size: 12.5px; font-weight: 600; color: var(--status-danger);"></div>
+
+            <!-- Сохранённые сессии -->
+            <div id="saved-sessions-panel" style="display: none; margin-top: 24px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                    <div
+                        style="width: 4px; height: 16px; background: linear-gradient(135deg, var(--accent), var(--primary)); border-radius: 4px;">
+                    </div>
+                    <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);">Сохранённые
+                        расчёты</span>
+                    <span id="saved-sessions-count"
+                        style="font-size: 11px; color: var(--text-tertiary); font-weight: 500;"></span>
+                </div>
+                <div id="saved-sessions-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+            </div>
+
+            <div id="upload-status"
+                style="margin-top: 12px; font-size: 12.5px; font-weight: 600; color: var(--status-danger);"></div>
         </div>
 
         <!-- ДАШБОРД -->
@@ -97,7 +131,9 @@
                         <div class="segment-share" id="seg-hot-share">0%</div>
                     </div>
                     <div class="segment-count" id="seg-hot-count">0</div>
-                    <div class="segment-bar-bg"><div class="segment-bar-fill" id="seg-hot-bar" style="width:0%;"></div></div>
+                    <div class="segment-bar-bg">
+                        <div class="segment-bar-fill" id="seg-hot-bar" style="width:0%;"></div>
+                    </div>
                     <div class="segment-meta"><span>Средний балл</span><b id="seg-hot-avg">0.0</b></div>
                 </div>
                 <div class="segment-card warm" id="seg-warm">
@@ -109,7 +145,9 @@
                         <div class="segment-share" id="seg-warm-share">0%</div>
                     </div>
                     <div class="segment-count" id="seg-warm-count">0</div>
-                    <div class="segment-bar-bg"><div class="segment-bar-fill" id="seg-warm-bar" style="width:0%;"></div></div>
+                    <div class="segment-bar-bg">
+                        <div class="segment-bar-fill" id="seg-warm-bar" style="width:0%;"></div>
+                    </div>
                     <div class="segment-meta"><span>Средний балл</span><b id="seg-warm-avg">0.0</b></div>
                 </div>
                 <div class="segment-card cold" id="seg-cold">
@@ -121,7 +159,9 @@
                         <div class="segment-share" id="seg-cold-share">0%</div>
                     </div>
                     <div class="segment-count" id="seg-cold-count">0</div>
-                    <div class="segment-bar-bg"><div class="segment-bar-fill" id="seg-cold-bar" style="width:0%;"></div></div>
+                    <div class="segment-bar-bg">
+                        <div class="segment-bar-fill" id="seg-cold-bar" style="width:0%;"></div>
+                    </div>
                     <div class="segment-meta"><span>Средний балл</span><b id="seg-cold-avg">0.0</b></div>
                 </div>
             </div>
@@ -135,7 +175,8 @@
                             <div class="chart-hint">Метки — значение среднего балла (0–100)</div>
                         </div>
                         <div class="stopfactor-toggle" id="catStopToggle">
-                            <button class="active" data-mode="all" onclick="setCategoryMode('all')">Все компании</button>
+                            <button class="active" data-mode="all" onclick="setCategoryMode('all')">Все
+                                компании</button>
                             <button data-mode="without" onclick="setCategoryMode('without')">Без стоп-факторов</button>
                             <button data-mode="only" onclick="setCategoryMode('only')">Только стоп-факторы</button>
                         </div>
@@ -151,7 +192,8 @@
                         </div>
                         <div class="region-controls">
                             <label style="font-size:11px; color:var(--text-tertiary);">Топ</label>
-                            <input type="number" id="regionTopN" value="8" min="3" max="30" onchange="renderRegionList()">
+                            <input type="number" id="regionTopN" value="8" min="3" max="30"
+                                onchange="renderRegionList()">
                             <select id="regionJumpSelect" onchange="jumpToRegion(this.value)">
                                 <option value="">Выбрать регион…</option>
                             </select>
@@ -169,7 +211,8 @@
                         <span class="result-count" id="resultCount">0 записей</span>
                     </div>
                     <div class="list-actions">
-                        <input type="text" id="searchInput" class="search-input" placeholder="Поиск по ИНН или названию…" oninput="applyFilters()">
+                        <input type="text" id="searchInput" class="search-input"
+                            placeholder="Поиск по ИНН или названию…" oninput="applyFilters()">
                         <select id="segmentFilter" class="filter-select" onchange="onSegmentSelectChange()">
                             <option value="">Все сегменты</option>
                             <option value="Горячий">Горячие</option>
