@@ -263,11 +263,8 @@ function renderDashboard() {
 }
 
 function resetSession() {
-    // Удаляем сессию на сервере если есть активная
-    if (currentSessionId) {
-        fetch(`/api/sessions/${currentSessionId}`, { method: 'DELETE' }).catch(() => { });
-    }
-
+    // Больше НЕ удаляем сессию на сервере — просто возвращаемся к экрану загрузки.
+    // Сессия остаётся в SQLite и появится в списке "Сохранённые расчёты".
     dashboardData = null;
     originalFile = null;
     currentSessionId = null;
